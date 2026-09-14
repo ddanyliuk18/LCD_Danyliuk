@@ -416,20 +416,434 @@ def create_llvm():
     return module, builder, printf, fmt
 
 
+# ============================================================
+# TASK 2 — TOKEN-BASED SYNTAX + CODE GENERATION
+# ============================================================
+
+class Symbol:
+    def __init__(self, ptr, mutable):
+        self.ptr = ptr
+        self.mutable = mutable
+
+
+def compile_tokens(token_lines):
+    module, builder, printf, fmt = create_llvm()
+
+    symbols = {}
+
+    seen_exit = False
+
+    # --------------------------------------------------------
+    # Helpers
+    # --------------------------------------------------------
+
+    def fail(token, message):
+        error_at(
+            token.line,
+            token.col,
+            message,
+        )
+
+    def value_from_token(token):
+        if token.kind == "number":
+            return ir.Constant(
+                I32,
+                int(token.text),
+            )
+
+        if token.kind == "identifier":
+            if token.text not in symbols:
+                fail(
+                    token,
+                    f"variable '{token.text}' "
+                    "is used before its declaration",
+                )
+
+            return builder.load(
+                symbols[token.text].ptr
+            )
+
+        fail(
+            token,
+            "expected a number or variable",
+        )
+
+    def compile_expression(expr_tokens):
+        """
+        Allowed expressions:
+
+        10
+        x
+        x + 3
+        2 * y
+        """
+
+        if len(expr_tokens) == 1:
+            return value_from_token(
+                expr_tokens[0]
+            )
+
+        if len(expr_tokens) == 3:
+            lhs = expr_tokens[0]
+            op = expr_tokens[1]
+            rhs = expr_tokens[2]
+
+            if (
+                op.kind != "operator"
+                or op.text not in ("+", "-", "*")
+            ):
+                fail(
+                    op,
+                    "expected arithmetic operator",
+                )
+
+            lhs_value = value_from_token(lhs)
+            rhs_value = value_from_token(rhs)
+
+            if op.text == "+":
+                return builder.add(
+                    lhs_value,
+                    rhs_value,
+                )
+
+            if op.text == "-":
+                return builder.sub(
+                    lhs_value,
+                    rhs_value,
+                )
+
+            return builder.mul(
+                lhs_value,
+                rhs_value,
+            )
+
+        if expr_tokens:
+            fail(
+                expr_tokens[0],
+                "invalid expression",
+            )
+
+        raise CompileError(
+            "line 1:1: empty expression"
+        )
+
+    # --------------------------------------------------------
+    # Statements
+    # --------------------------------------------------------
+
+    for line_tokens in token_lines:
+
+        # Remove endline token from syntax processing.
+        tokens = [
+            token
+            for token in line_tokens
+            if token.kind != "endline"
+        ]
+
+        # Blank line
+        if not tokens:
+            continue
+
+        first = tokens[0]
+
+        if seen_exit:
+            fail(
+                first,
+                "statement after exit",
+            )
+
+        # ====================================================
+        # DECLARATION
+        #
+        # i32 x{5}
+        # i32 mut y{10}
+        # ====================================================
+
+        if (
+            first.kind == "keyword"
+            and first.text == "i32"
+        ):
+            index = 1
+            mutable = False
+
+            # optional mut
+            if (
+                index < len(tokens)
+                and tokens[index].kind == "keyword"
+                and tokens[index].text == "mut"
+            ):
+                mutable = True
+                index += 1
+
+            # variable name
+            if index >= len(tokens):
+                fail(
+                    first,
+                    "expected variable name",
+                )
+
+            name_token = tokens[index]
+
+            if name_token.kind != "identifier":
+                fail(
+                    name_token,
+                    "expected variable name",
+                )
+
+            name = name_token.text
+            index += 1
+
+            if name in symbols:
+                fail(
+                    name_token,
+                    f"variable '{name}' is already declared",
+                )
+
+            # mandatory {
+            if (
+                index >= len(tokens)
+                or tokens[index].kind != "block"
+                or tokens[index].text != "{"
+            ):
+                if index < len(tokens):
+                    bad = tokens[index]
+                    fail(
+                        bad,
+                        f"variable '{name}' "
+                        "needs an initialiser in {}",
+                    )
+
+                fail(
+                    name_token,
+                    f"variable '{name}' "
+                    "needs an initialiser in {}",
+                )
+
+            index += 1
+
+            expr_start = index
+
+            # Find }
+            while (
+                index < len(tokens)
+                and not (
+                    tokens[index].kind == "block"
+                    and tokens[index].text == "}"
+                )
+            ):
+                index += 1
+
+            if index >= len(tokens):
+                fail(
+                    name_token,
+                    f"variable '{name}' "
+                    "needs a closing '}'",
+                )
+
+            expr_tokens = tokens[
+                expr_start:index
+            ]
+
+            if not expr_tokens:
+                fail(
+                    tokens[index],
+                    "empty initialiser",
+                )
+
+            value = compile_expression(
+                expr_tokens
+            )
+
+            index += 1
+
+            # no extra tokens after }
+            if index != len(tokens):
+                fail(
+                    tokens[index],
+                    "extra tokens after declaration",
+                )
+
+            ptr = builder.alloca(
+                I32,
+                name=name,
+            )
+
+            builder.store(
+                value,
+                ptr,
+            )
+
+            symbols[name] = Symbol(
+                ptr,
+                mutable,
+            )
+
+        # ====================================================
+        # EXIT
+        #
+        # exit y
+        # exit 42
+        # ====================================================
+
+        elif (
+            first.kind == "keyword"
+            and first.text == "exit"
+        ):
+            if len(tokens) != 2:
+                fail(
+                    first,
+                    "exit expects exactly one value",
+                )
+
+            value_token = tokens[1]
+
+            value = value_from_token(
+                value_token
+            )
+
+            builder.call(
+                printf,
+                [
+                    builder.bitcast(
+                        fmt,
+                        ir.PointerType(I8),
+                    ),
+                    value,
+                ],
+            )
+
+            builder.ret(
+                ir.Constant(I32, 0)
+            )
+
+            seen_exit = True
+
+        # ====================================================
+        # ASSIGNMENT
+        #
+        # y := 5
+        # y := x
+        # y := x + 3
+        # ====================================================
+
+        elif first.kind == "identifier":
+            name = first.text
+
+            if name not in symbols:
+                fail(
+                    first,
+                    f"variable '{name}' "
+                    "is used before its declaration",
+                )
+
+            if (
+                len(tokens) < 3
+                or tokens[1].kind != "operator"
+                or tokens[1].text != ":="
+            ):
+                fail(
+                    first,
+                    "invalid assignment",
+                )
+
+            symbol = symbols[name]
+
+            if not symbol.mutable:
+                fail(
+                    first,
+                    f"cannot assign to '{name}': "
+                    "it is not mut",
+                )
+
+            expr_tokens = tokens[2:]
+
+            value = compile_expression(
+                expr_tokens
+            )
+
+            builder.store(
+                value,
+                symbol.ptr,
+            )
+
+        # ====================================================
+        # ANYTHING ELSE
+        # ====================================================
+
+        else:
+            fail(
+                first,
+                "invalid statement",
+            )
+
+    # Program must have exit.
+    if not seen_exit:
+        # We need a sensible position.
+        for line_tokens in reversed(token_lines):
+            real = [
+                t
+                for t in line_tokens
+                if t.kind != "endline"
+            ]
+
+            if real:
+                last = real[-1]
+
+                error_at(
+                    last.line,
+                    last.col,
+                    "program has no exit",
+                )
+
+        error_at(
+            1,
+            1,
+            "program has no exit",
+        )
+
+    return module
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         print(
-            "usage: python3 compiler.py input.txt",
+            "usage: python3 compiler.py "
+            "input.txt output.ll",
             file=sys.stderr,
         )
         return 1
 
+    source_path = sys.argv[1]
+    output_path = sys.argv[2]
+
+    # On error no old output file should survive.
+    if os.path.exists(output_path):
+        os.remove(output_path)
+
     try:
-        with open(sys.argv[1], "rb") as f:
+        # IMPORTANT:
+        # Practice 2 lexer reads BYTES.
+        with open(source_path, "rb") as f:
             data = f.read()
 
         token_lines = lex(data)
-        print_tokens(token_lines)
+
+        module = compile_tokens(
+            token_lines
+        )
+
+        # IR is written once, through str(module).
+        with open(
+            output_path,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(str(module))
+
         return 0
 
     except CompileError as e:
@@ -437,6 +851,10 @@ def main():
             f"compilation error: {e}",
             file=sys.stderr,
         )
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         return 1
 
 
