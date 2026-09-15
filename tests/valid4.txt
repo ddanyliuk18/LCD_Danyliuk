@@ -1,0 +1,5 @@
+
+i32    mut    x { 7 }
+
+x:=x*2
+exit    x
