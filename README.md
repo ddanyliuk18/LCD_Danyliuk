@@ -1,99 +1,66 @@
-# Languages and Compilers Design — Practice 2
+# Languages and Compilers Design — Practice 3
 
-Practice 2 implements a hand-written byte-by-byte lexer and a token-based compiler frontend in Python using `llvmlite`.
+Practice 3 implements a hand-written recursive-descent parser and an abstract syntax tree between the byte-level lexer and LLVM code generation.
 
-The compiler supports:
-
-- `i32` declarations;
-- immutable variables by default;
-- `mut` variables;
-- mandatory initializers;
-- integer constants and variables;
-- arithmetic operators `+`, `-`, `*`;
-- assignment with `:=`;
-- `exit`;
-- lexical and semantic errors with `line:column` positions.
-
-## Worked example
+The compiler pipeline is:
 
 ```text
-i32 x{5}
-i32 mut y{10}
-y := x + 3
-exit y
+source bytes -> lexer -> token vectors -> parser -> AST -> CodeGen visitor -> LLVM IR
 ```
 
-Print the lexer output (columns are `text`, `kind`, and `line:column`):
+The language supports `i32` declarations, optional `mut`, assignment to mutable variables, and a final `exit`. Initialisers and assignment values may contain chains of `+`, `-`, and `*`; multiplication has higher precedence, while operators at the same precedence are left-associative. `exit` still accepts only a constant or variable.
+
+The grammar is documented in `grammar.ebnf`. The parser and AST are implemented without parser generators, regular expressions, or `eval`. LLVM IR is produced only through `llvmlite.ir` and serialized with `str(module)`.
+
+## Compiler interface
+
+Print lexer tokens (`text`, `kind`, `line:column`):
 
 ```bash
 python3 compiler.py --tokens tests/valid1.txt
 ```
 
-```text
-'i32'   keyword     1:1
-'x'     identifier  1:5
-'{'     block       1:6
-'5'     number      1:7
-'}'     block       1:8
-'\\n'   endline     1:9
-'i32'   keyword     2:1
-'mut'   keyword     2:5
-'y'     identifier  2:9
-'{'     block       2:10
-'10'    number      2:11
-'}'     block       2:13
-'\\n'   endline     2:14
-'y'     identifier  3:1
-':='    operator    3:3
-'x'     identifier  3:6
-'+'     operator    3:8
-'3'     number      3:10
-'\\n'   endline     3:11
-'exit'  keyword     4:1
-'y'     identifier  4:6
-'\\n'   endline     4:7
-```
-
-Compile the program to LLVM IR:
+Print the AST without generating an output file:
 
 ```bash
-python3 compiler.py tests/valid1.txt output.ll
+python3 compiler.py --ast tests/valid1.txt
 ```
 
-Run the generated LLVM IR:
+Compile to LLVM IR and run it:
 
 ```bash
+python3 compiler.py tests/valid5.txt output.ll
 lli output.ll
 ```
 
-Expected output:
+Expected output for `valid5.txt`:
 
 ```text
-Program exit with result 8
+Program exit with result 120
 ```
 
-Alternatively, compile it to an object file and executable:
+## AST example
 
-```bash
-llc -filetype=obj -relocation-model=pic output.ll -o output.o
-clang -fPIE output.o -o program
-./program
+For `i32 x{2 + 3 * 4}`, the precedence is visible in the tree:
+
+```text
+Program
+  Decl x const
+    BinOp +
+      Const 2
+      BinOp *
+        Const 3
+        Const 4
+  Exit
+    Var x
 ```
 
-## Run tests
+## Tests
 
-Activate an environment with `llvmlite` installed, then run:
+Run the complete suite in an environment with `llvmlite` and `lli`:
 
 ```bash
 bash run_tests.sh
 ```
 
-The suite contains five valid and five invalid programs. Expected result:
-
-```text
-=== RESULT ===
-Passed: 10
-Failed: 0
-```
-
-Invalid tests verify that incorrect programs are rejected with a non-zero exit code, the expected error and `line:column`, and no generated `output.ll`.
+The valid cases check runtime output and exact `.ast` dumps. They cover the Practice 2 program, precedence, a multiplication in the middle of a chain, left associativity, and a full expression on the right of `:=`. Invalid cases cover parser, lexer, and AST-walk semantic errors with exact `line:column` positions.

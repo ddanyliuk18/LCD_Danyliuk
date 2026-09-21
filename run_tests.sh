@@ -10,6 +10,7 @@ echo "=== VALID TESTS ==="
 for input in tests/valid*.txt; do
     base="${input%.txt}"
     expected="${base}.out"
+    expected_ast="${base}.ast"
 
     rm -f output.ll
 
@@ -17,7 +18,17 @@ for input in tests/valid*.txt; do
         actual=$(lli output.ll)
         expected_text=$(cat "$expected")
 
-        if [ "$actual" = "$expected_text" ]; then
+        if ! python3 compiler.py --ast "$input" >actual.ast 2>actual.err; then
+            echo "$(basename "$input") FAIL"
+            echo "  AST dump unexpectedly returned an error:"
+            cat actual.err
+            failed=$((failed + 1))
+        elif ! diff -q "$expected_ast" actual.ast >/dev/null; then
+            echo "$(basename "$input") FAIL"
+            echo "  AST dump differs from $expected_ast"
+            diff -u "$expected_ast" actual.ast
+            failed=$((failed + 1))
+        elif [ "$actual" = "$expected_text" ]; then
             echo "$(basename "$input") PASS"
             passed=$((passed + 1))
         else
@@ -75,7 +86,7 @@ for input in tests/invalid*.txt; do
 done
 
 
-rm -f output.ll actual.err
+rm -f output.ll actual.err actual.ast
 
 echo
 echo "=== RESULT ==="

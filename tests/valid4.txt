@@ -1,5 +1,2 @@
-
-i32    mut    x { 7 }
-
-x:=x*2
-exit    x
+i32 x{10 - 3 - 2}
+exit x
