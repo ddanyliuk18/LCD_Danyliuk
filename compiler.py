@@ -362,7 +362,11 @@ def lex(data: bytes):
 def print_tokens(lines):
     for line_tokens in lines:
         for token in line_tokens:
-            print(token)
+            print(
+                f"{token.text!r}\t"
+                f"{token.kind}\t"
+                f"{token.line}:{token.col}"
+            )
 
 
 # ============================================================
@@ -809,19 +813,29 @@ def compile_tokens(token_lines):
 # ============================================================
 
 def main():
+    tokens_only = (
+        len(sys.argv) == 3
+        and sys.argv[1] == "--tokens"
+    )
+
     if len(sys.argv) != 3:
         print(
-            "usage: python3 compiler.py "
-            "input.txt output.ll",
+            "usage:\n"
+            "  python3 compiler.py input.txt output.ll\n"
+            "  python3 compiler.py --tokens input.txt",
             file=sys.stderr,
         )
         return 1
 
-    source_path = sys.argv[1]
-    output_path = sys.argv[2]
+    if tokens_only:
+        source_path = sys.argv[2]
+        output_path = None
+    else:
+        source_path = sys.argv[1]
+        output_path = sys.argv[2]
 
     # On error no old output file should survive.
-    if os.path.exists(output_path):
+    if output_path is not None and os.path.exists(output_path):
         os.remove(output_path)
 
     try:
@@ -831,6 +845,10 @@ def main():
             data = f.read()
 
         token_lines = lex(data)
+
+        if tokens_only:
+            print_tokens(token_lines)
+            return 0
 
         module = compile_tokens(
             token_lines
@@ -852,7 +870,7 @@ def main():
             file=sys.stderr,
         )
 
-        if os.path.exists(output_path):
+        if output_path is not None and os.path.exists(output_path):
             os.remove(output_path)
 
         return 1

@@ -1,0 +1,137 @@
+=== Entry 1 ===
+Track: Practice 2
+Goal: Understand the assignment requirements and the architectural difference between Practice 1 and Practice 2.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked the AI to explain the full purpose of Practice 2 in detail and guide the implementation step by step.
+Output (summary): The AI explained that Practice 2 introduces a proper frontend stage between raw source code and LLVM generation: source bytes are processed by a hand-written lexer, converted into typed tokens with line/column positions, and only then consumed by syntax/semantic logic and the existing llvmlite-based backend. It also explained the distinction between Task 1 (lexer) and Task 2 (token-based syntax and code generation), the new `i32` / `mut` syntax, mandatory initializers, assignment rules, and the required error handling.
+Verification: Compared the explanation against the provided Practice 2 specification and used it as the implementation plan for the rest of the work.
+Outcome: Accepted. The explanation established the implementation structure used for the practice.
+
+=== Entry 2 ===
+Track: Repository / environment setup
+Goal: Recover a clean Git workflow after problems caused by using Git inside a Windows directory mounted into the Multipass Linux VM.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Shared Git errors involving `.git/logs`, permission problems, branch creation failures, and different Git status results between Windows and the mounted Ubuntu directory.
+Output (summary): The AI identified the mounted Windows repository as the likely source of Git metadata and permission inconsistencies. It recommended creating a fresh clone on Windows, creating the `practice-2` branch there, remounting that clean folder into Multipass, and using Windows PowerShell for Git operations while using the VM only for compiling and testing.
+Verification: Cloned the repository into `D:\LCD\LCD_Danyliuk_clean`, confirmed that `main` contained the Practice 1 commit, created and pushed the `practice-2` branch, remounted the clean repository into the VM, and confirmed that Windows Git reported a clean working tree.
+Outcome: Accepted. This became the working Git workflow for the remainder of the practice.
+
+=== Entry 3 ===
+Track: Practice 2 — Task 1
+Goal: Design and implement the required hand-written byte-by-byte lexer.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked the AI to provide a full implementation after discussing how the lexer should work.
+Output (summary): The AI generated the lexer portion of `compiler.py`, including the `Token` class, byte helper functions, keyword recognition, explicit lexer states (`START`, `IDENT`, `NUMBER`, `COLON`), byte-by-byte processing, token position tracking, operators, braces, newlines, identifiers, numbers, keywords, and lexical errors. The implementation avoided regular expressions, `split()`, and lexer generators as required by the assignment.
+Verification: Reviewed the generated code against the assignment constraints. The lexer was later exercised indirectly by the compiler test suite and by invalid lexical inputs, including unknown bytes and unterminated braces.
+Outcome: Accepted with integration into the Practice 2 compiler.
+
+=== Entry 4 ===
+Track: Practice 2 — Task 2
+Goal: Replace the old Practice 1 raw-text parsing logic with token-based syntax/semantic processing while preserving LLVM code generation through llvmlite.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Shared the complete Practice 1 compiler and asked for a full Practice 2 implementation.
+Output (summary): The AI generated a complete `compiler.py` containing both Task 1 and Task 2. The new implementation parses only token streams after lexing and supports `i32` declarations, optional `mut`, mandatory `{initializer}` syntax, integer and variable operands, one arithmetic operation using `+`, `-`, or `*`, assignments using `:=`, constant-vs-mutable checks, declaration-before-use checks, duplicate-declaration checks, `exit` with either a variable or integer constant, and LLVM IR generation through the llvmlite builder API.
+Verification: Ran the assignment example:
+`i32 x{0}`
+`i32 mut y{10}`
+`i32 z{2+5}`
+`i32 mut t { x + 10 }`
+`t := t * z`
+`exit t`
+The generated LLVM IR was executed with `lli output.ll` and produced `Program exit with result 70`.
+Outcome: Accepted after successful end-to-end execution.
+
+=== Entry 5 ===
+Track: Practice 2 — LLVM execution/debugging
+Goal: Verify that generated LLVM IR can also be compiled through `llc` and `clang`, and diagnose a Linux execution permission error.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Reported that `llc` and `clang` successfully created `program`, but running `./program` inside the mounted repository failed with `Permission denied`.
+Output (summary): The AI explained that the failure was caused by attempting to execute a binary directly from the Windows-mounted Multipass directory rather than by an LLVM or compiler error. It suggested copying the executable into the VM-native filesystem and applying executable permissions.
+Verification: Ran:
+`cp program ~/program`
+`chmod +x ~/program`
+`~/program`
+The result was `Program exit with result 70`.
+Outcome: Accepted. Confirmed that both the LLVM IR execution path and the `llc` + `clang` native compilation path worked correctly.
+
+=== Entry 6 ===
+Track: Practice 2 — error handling
+Goal: Verify semantic error handling, non-zero compiler exit status, and line/column diagnostics.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked how invalid programs should be tested and whether invalid tests simply check that an error is raised.
+Output (summary): The AI explained that invalid tests should verify more than the existence of an error: the compiler should reject the program, return a non-zero exit status, produce the expected diagnostic with `line:column`, and not leave a generated `output.ll`. It also proposed concrete invalid cases for lexical and semantic failures.
+Verification: Tested assignment to an immutable variable:
+`i32 x{5}`
+`x := 7`
+`exit x`
+The compiler returned:
+`compilation error: line 2:1: cannot assign to 'x': it is not mut`
+and exited with status `1`.
+Outcome: Accepted. The compiler correctly rejected the invalid program.
+
+=== Entry 7 ===
+Track: Practice 2 — testing
+Goal: Create the required minimum set of valid and invalid tests and cover the main lexer and semantic behaviors.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked the AI to write the tests after the compiler successfully produced the expected result.
+Output (summary): The AI proposed five valid programs and five invalid programs. The valid tests covered immutable and mutable declarations, arithmetic initializers, `exit` with a constant, unusual spacing and blank lines, and initialization from another variable. The invalid tests covered an unknown byte, an unterminated `{`, assignment to a non-`mut` variable, use before declaration, and a missing initializer. It also supplied the expected `.out` and `.err` files.
+Verification: Added the test cases under `tests/` and executed them through the automated test runner.
+Outcome: Accepted. All required test categories were represented.
+
+=== Entry 8 ===
+Track: Practice 2 — test automation
+Goal: Automate verification of all valid and invalid tests instead of running them individually.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked for a full test run after creating the valid and invalid test files.
+Output (summary): The AI generated `run_tests.sh`. For valid inputs, the script checks that compilation succeeds, runs the generated LLVM IR with `lli`, and compares the program output with the matching `.out` file. For invalid inputs, it checks for a non-zero compiler status, verifies that `output.ll` was not produced, and compares stderr with the matching `.err` file.
+Verification: Ran `bash run_tests.sh` in the Multipass VM. The result was:
+`Passed: 10`
+`Failed: 0`
+All five valid and five invalid tests passed.
+Outcome: Accepted with no further changes required for the tested cases.
+
+=== Entry 9 ===
+Track: Git / submission structure
+Goal: Preserve the assignment requirement of at least one separate commit per task.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked how to commit Task 1 and Task 2 separately after both had already been implemented in the same `compiler.py`.
+Output (summary): The AI first suggested partial staging with `git add -p`. When that approach failed because the patch could not be applied cleanly, it proposed a safer fallback: preserve the complete compiler outside the repository, temporarily retain the lexer-only version for the Task 1 commit, restore the complete compiler, and commit the Task 2 implementation separately.
+Verification: The final Git history showed:
+`01399e5 Implement Practice 2 lexer`
+`2767f32 Implement Practice 2 syntax and code generation`
+followed by the original Practice 1 commit.
+The `practice-2` branch was successfully pushed to GitHub.
+Outcome: Accepted. The repository history now separates Task 1 and Task 2 as required.
+
+=== Entry 10 ===
+Track: Repository hygiene
+Goal: Keep temporary Python cache files and generated development artifacts out of the repository.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Shared that `__pycache__` appeared as an untracked directory and could not be removed because Windows reported access denial.
+Output (summary): The AI explained that physical deletion was unnecessary and recommended adding `__pycache__/` and `*.pyc` to `.gitignore`. It also advised removing or restoring temporary lexer inputs, semantic test files, generated object files, executables, and modified sample files rather than committing them.
+Verification: Added Python cache patterns to `.gitignore`, committed the change as `Ignore Python cache files`, and confirmed that `__pycache__` no longer appeared as an untracked Git item.
+Outcome: Accepted.
+
+=== Entry 11 ===
+Track: Documentation
+Goal: Prepare a concise README explaining the Practice 2 implementation and how to run the compiler and tests.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Asked the AI to prepare the README after completing the implementation, tests, and commits.
+Output (summary): The AI drafted a README describing the byte-by-byte lexer, token-based compiler frontend, supported language constructs, a sample program producing result 70, commands for generating and executing LLVM IR, commands for compiling through `llc` and `clang`, and instructions for running the 10-test suite with `bash run_tests.sh`.
+Verification: Created `README.md` in the repository and reviewed the draft for consistency with the actual compiler interface and test workflow.
+Outcome: Accepted as the documentation draft for Practice 2.
+
+=== Entry 12 ===
+Track: Overall Practice 2
+Goal: Use AI as a pair-programming and debugging assistant while completing the implementation, verification, repository setup, and submission preparation.
+Tool used: ChatGPT (GPT-5.6 Sol)
+Prompt: Used iterative prompts throughout the practice to ask for conceptual explanations, code generation, debugging help, test design, Git workflow guidance, and documentation.
+Output (summary): The AI contributed substantial implementation code for both the lexer and token-based compiler, generated the automated test runner and individual tests, explained the compiler architecture and state-machine behavior, diagnosed environment-specific execution and Git issues, and drafted repository documentation. The user performed the actual repository operations, executed the compiler and test commands, inspected errors, verified outputs, and confirmed the final behavior in the local Windows + Multipass environment.
+Verification: Final verified technical results included:
+- Practice 2 example executed through `lli` → `Program exit with result 70`
+- Native `llc` + `clang` build executed from the VM-native filesystem → `Program exit with result 70`
+- Immutable assignment test rejected at `line 2:1` with exit code `1`
+- Automated suite → `Passed: 10`, `Failed: 0`
+- Separate Git commits for Practice 2 Task 1 and Task 2
+- `practice-2` branch successfully pushed to GitHub
+Outcome: Accepted. AI assistance was substantial and included both generated implementation content and iterative explanation/debugging; all accepted code was tested by the user in the actual course environment.
