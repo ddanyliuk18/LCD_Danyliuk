@@ -1,5 +1,3 @@
-int x
-int y
-x := 5
-y := x + 3
-exit y
+i32 a{2}
+i32 b{3+4}
+exit b

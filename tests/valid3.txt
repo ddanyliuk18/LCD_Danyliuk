@@ -1,5 +1,1 @@
-int a
-int b
-a := 4
-b := a * 3
-exit b
+exit 42
