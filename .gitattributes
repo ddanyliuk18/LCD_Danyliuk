@@ -1,0 +1,8 @@
+*.py text eol=lf
+*.sh text eol=lf
+*.ebnf text eol=lf
+*.txt text eol=lf
+*.err text eol=lf
+*.out text eol=lf
+*.ast text eol=lf
+*.md text eol=lf

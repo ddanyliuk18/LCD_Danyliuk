@@ -1,0 +1,12 @@
+(* The lexer groups tokens by source line. A vector containing only the
+   endline token is blank; after exit, only blank lines may follow. *)
+
+program   ::= { blank | statement } exit { blank } ;
+blank     ::= "\n" ;
+statement ::= decl | assign ;
+decl      ::= "i32" [ "mut" ] ident "{" expr "}" ;
+assign    ::= ident ":=" expr ;
+exit      ::= "exit" factor ;
+expr      ::= term { ("+" | "-") term } ;
+term      ::= factor { "*" factor } ;
+factor    ::= number | ident ;

@@ -1,0 +1,38 @@
+=== AI Usage — Practice 3 ===
+
+Track: Practice 3 — parser and abstract syntax tree
+
+Goal:
+Implement the EBNF grammar, a hand-written recursive-descent parser, an abstract syntax tree, AST-based LLVM code generation, expression precedence and associativity, the --ast interface, and the required tests.
+
+Tool used:
+OpenAI Codex
+
+Prompt summary:
+The complete Practice 3 assignment was provided. The AI was asked to inspect the existing Practice 2 repository, implement the new compiler phase carefully, preserve previous behavior, create appropriate tests, and keep the Git history organized into correct commits.
+
+AI contribution:
+- reviewed the existing byte-level lexer and token-based compiler;
+- wrote grammar.ebnf for the complete Practice 3 language;
+- implemented the AST class hierarchy;
+- implemented the hand-written one-token-lookahead recursive-descent parser;
+- added --ast tree output;
+- implemented expression chains with multiplication precedence and left associativity;
+- refactored LLVM generation into a CodeGen visitor over the AST;
+- preserved semantic checks for declaration order, duplicate declarations, and assignment only to mut variables;
+- designed valid, invalid, and exact AST fixtures;
+- updated run_tests.sh and README.md;
+- diagnosed the Windows CRLF issue and added .gitattributes to keep compiler and test files on LF;
+- helped verify the implementation in the Ubuntu Multipass environment.
+
+Verification performed:
+- Python syntax check passed;
+- all five expected AST dumps matched exactly;
+- every valid program generated an LLVM module accepted by llvmlite.binding.verify();
+- all eight invalid programs returned a non-zero exit code, the exact expected error and line:column, and no output file;
+- the complete Ubuntu test suite passed: Passed: 13, Failed: 0;
+- tests/valid5.txt executed through lli and printed: Program exit with result 120;
+- git diff checks passed and the work was split into focused implementation, test, and fix commits.
+
+Outcome:
+Accepted. AI assistance was substantial and included implementation, test design, debugging, documentation, and Git workflow support. The final compiler behavior was verified by the user in the Ubuntu + llvmlite + lli environment.

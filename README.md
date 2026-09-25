@@ -1,65 +1,66 @@
-# Languages and Compilers Design — Practice 2
+# Languages and Compilers Design — Practice 3
 
-Practice 2 implements a hand-written byte-by-byte lexer and a token-based compiler frontend in Python using `llvmlite`.
+Practice 3 implements a hand-written recursive-descent parser and an abstract syntax tree between the byte-level lexer and LLVM code generation.
 
-The compiler supports:
-
-- `i32` declarations;
-- immutable variables by default;
-- `mut` variables;
-- mandatory initializers;
-- integer constants and variables;
-- arithmetic operators `+`, `-`, `*`;
-- assignment with `:=`;
-- `exit`;
-- lexical and semantic errors with `line:column` positions.
-
-## Example
+The compiler pipeline is:
 
 ```text
-i32 x{0}
-i32 mut y{10}
-i32 z{2+5}
-i32 mut t { x + 10 }
-t := t * z
-exit t
-Expected output:
+source bytes -> lexer -> token vectors -> parser -> AST -> CodeGen visitor -> LLVM IR
+```
 
-Program exit with result 70
-Run the compiler
+The language supports `i32` declarations, optional `mut`, assignment to mutable variables, and a final `exit`. Initialisers and assignment values may contain chains of `+`, `-`, and `*`; multiplication has higher precedence, while operators at the same precedence are left-associative. `exit` still accepts only a constant or variable.
 
-Activate the environment with llvmlite installed:
+The grammar is documented in `grammar.ebnf`. The parser and AST are implemented without parser generators, regular expressions, or `eval`. LLVM IR is produced only through `llvmlite.ir` and serialized with `str(module)`.
 
-source ~/lcd/bin/activate
+## Compiler interface
 
-Compile source code to LLVM IR:
+Print lexer tokens (`text`, `kind`, `line:column`):
 
-python3 compiler.py input.txt output.ll
+```bash
+python3 compiler.py --tokens tests/valid1.txt
+```
 
-Run the generated LLVM IR:
+Print the AST without generating an output file:
 
+```bash
+python3 compiler.py --ast tests/valid1.txt
+```
+
+Compile to LLVM IR and run it:
+
+```bash
+python3 compiler.py tests/valid5.txt output.ll
 lli output.ll
+```
 
-Or compile it to an object file and executable:
+Expected output for `valid5.txt`:
 
-llc -filetype=obj -relocation-model=pic output.ll -o output.o
-clang -fPIE output.o -o program
-./program
-Run tests
+```text
+Program exit with result 120
+```
 
-The test suite contains 5 valid and 5 invalid programs.
+## AST example
 
+For `i32 x{2 + 3 * 4}`, the precedence is visible in the tree:
+
+```text
+Program
+  Decl x const
+    BinOp +
+      Const 2
+      BinOp *
+        Const 3
+        Const 4
+  Exit
+    Var x
+```
+
+## Tests
+
+Run the complete suite in an environment with `llvmlite` and `lli`:
+
+```bash
 bash run_tests.sh
+```
 
-Expected result:
-
-=== RESULT ===
-Passed: 10
-Failed: 0
-
-Invalid tests verify that incorrect programs are rejected with:
-
-a non-zero exit code;
-the expected error message;
-the correct line:column;
-no generated output.ll.
+The valid cases check runtime output and exact `.ast` dumps. They cover the Practice 2 program, precedence, a multiplication in the middle of a chain, left associativity, and a full expression on the right of `:=`. Invalid cases cover parser, lexer, and AST-walk semantic errors with exact `line:column` positions.
