@@ -1,100 +1,86 @@
 #!/bin/bash
 
 set -u
+shopt -s nullglob
 
 passed=0
 failed=0
 
-echo "=== VALID TESTS ==="
-
-for input in tests/valid*.txt; do
+check_ok() {
+    input="$1"
     base="${input%.txt}"
-    expected="${base}.out"
-    expected_ast="${base}.ast"
-
-    rm -f output.ll
-
-    if python3 compiler.py "$input" output.ll >/dev/null 2>actual.err; then
-        actual=$(lli output.ll)
-        expected_text=$(cat "$expected")
-
-        if ! python3 compiler.py --ast "$input" >actual.ast 2>actual.err; then
-            echo "$(basename "$input") FAIL"
-            echo "  AST dump unexpectedly returned an error:"
-            cat actual.err
-            failed=$((failed + 1))
-        elif ! diff -q "$expected_ast" actual.ast >/dev/null; then
-            echo "$(basename "$input") FAIL"
-            echo "  AST dump differs from $expected_ast"
-            diff -u "$expected_ast" actual.ast
-            failed=$((failed + 1))
-        elif [ "$actual" = "$expected_text" ]; then
-            echo "$(basename "$input") PASS"
-            passed=$((passed + 1))
-        else
-            echo "$(basename "$input") FAIL"
-            echo "  expected: $expected_text"
-            echo "  actual:   $actual"
-            failed=$((failed + 1))
-        fi
+    if [[ "$input" == tests/ok/* ]]; then
+        expected="${base}.expected"
     else
-        echo "$(basename "$input") FAIL"
-        echo "  compiler unexpectedly returned an error:"
+        expected="${base}.out"
+    fi
+    expected_ast="${base}.ast"
+    rm -f output.ll actual.out actual.err actual.ast
+
+    if ! python3 compiler.py "$input" output.ll >actual.out 2>actual.err; then
+        echo "${input} FAIL (compiler rejected it)"
         cat actual.err
         failed=$((failed + 1))
+    elif ! python3 compiler.py --ast "$input" >actual.ast 2>actual.err; then
+        echo "${input} FAIL (AST mode rejected it)"
+        cat actual.err
+        failed=$((failed + 1))
+    elif ! diff -u "$expected_ast" actual.ast; then
+        echo "${input} FAIL (AST differs)"
+        failed=$((failed + 1))
+    elif ! lli output.ll >actual.out 2>actual.err; then
+        echo "${input} FAIL (lli rejected the IR)"
+        cat actual.err
+        failed=$((failed + 1))
+    elif ! diff -u "$expected" actual.out; then
+        echo "${input} FAIL (output differs)"
+        failed=$((failed + 1))
+    else
+        echo "${input} PASS"
+        passed=$((passed + 1))
     fi
-done
+}
 
+check_err() {
+    input="$1"
+    base="${input%.txt}"
+    if [[ "$input" == tests/err/* ]]; then
+        expected="${base}.expected"
+    else
+        expected="${base}.err"
+    fi
+    rm -f output.ll actual.err
+
+    if python3 compiler.py "$input" output.ll >/dev/null 2>actual.err; then
+        echo "${input} FAIL (compiler accepted it)"
+        failed=$((failed + 1))
+    elif [ -f output.ll ]; then
+        echo "${input} FAIL (output.ll exists after an error)"
+        failed=$((failed + 1))
+    elif ! diff -u "$expected" actual.err; then
+        echo "${input} FAIL (diagnostic differs)"
+        failed=$((failed + 1))
+    else
+        echo "${input} PASS"
+        passed=$((passed + 1))
+    fi
+}
+
+echo "=== VALID TESTS ==="
+for input in tests/valid*.txt tests/ok/*.txt; do
+    check_ok "$input"
+done
 
 echo
 echo "=== INVALID TESTS ==="
-
-for input in tests/invalid*.txt; do
-    base="${input%.txt}"
-    expected="${base}.err"
-
-    rm -f output.ll actual.err
-
-    python3 compiler.py "$input" output.ll >/dev/null 2>actual.err
-    status=$?
-
-    if [ "$status" -eq 0 ]; then
-        echo "$(basename "$input") FAIL"
-        echo "  compiler accepted invalid program"
-        failed=$((failed + 1))
-        continue
-    fi
-
-    if [ -f output.ll ]; then
-        echo "$(basename "$input") FAIL"
-        echo "  output.ll exists after compilation error"
-        failed=$((failed + 1))
-        continue
-    fi
-
-    if diff -q "$expected" actual.err >/dev/null; then
-        echo "$(basename "$input") PASS"
-        passed=$((passed + 1))
-    else
-        echo "$(basename "$input") FAIL"
-        echo "  expected:"
-        cat "$expected"
-        echo "  actual:"
-        cat actual.err
-        failed=$((failed + 1))
-    fi
+for input in tests/invalid*.txt tests/err/*.txt; do
+    check_err "$input"
 done
 
-
-rm -f output.ll actual.err actual.ast
+rm -f output.ll actual.out actual.err actual.ast
 
 echo
 echo "=== RESULT ==="
 echo "Passed: $passed"
 echo "Failed: $failed"
-
-if [ "$failed" -eq 0 ]; then
-    exit 0
-else
-    exit 1
-fi
+test "$failed" -eq 0

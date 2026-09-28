@@ -5,4 +5,5 @@
 *.err text eol=lf
 *.out text eol=lf
 *.ast text eol=lf
+*.expected text eol=lf
 *.md text eol=lf

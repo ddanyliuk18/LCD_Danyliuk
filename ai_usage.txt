@@ -1,38 +1,60 @@
-=== AI Usage — Practice 3 ===
-
-Track: Practice 3 — parser and abstract syntax tree
-
-Goal:
-Implement the EBNF grammar, a hand-written recursive-descent parser, an abstract syntax tree, AST-based LLVM code generation, expression precedence and associativity, the --ast interface, and the required tests.
+=== AI Usage — Practice 4 ===
 
 Tool used:
 OpenAI Codex
 
 Prompt summary:
-The complete Practice 3 assignment was provided. The AI was asked to inspect the existing Practice 2 repository, implement the new compiler phase carefully, preserve previous behavior, create appropriate tests, and keep the Git history organized into correct commits.
+The complete Practice 4 assignment and the reviewer feedback from Practice 3
+were provided. The request was to implement the task, explain the result,
+preserve a clean commit history, fix the trailing-space diagnostic position,
+and remember that the repository owner will add the PR reviewer.
 
-AI contribution:
-- reviewed the existing byte-level lexer and token-based compiler;
-- wrote grammar.ebnf for the complete Practice 3 language;
-- implemented the AST class hierarchy;
-- implemented the hand-written one-token-lookahead recursive-descent parser;
-- added --ast tree output;
-- implemented expression chains with multiplication precedence and left associativity;
-- refactored LLVM generation into a CodeGen visitor over the AST;
-- preserved semantic checks for declaration order, duplicate declarations, and assignment only to mut variables;
-- designed valid, invalid, and exact AST fixtures;
-- updated run_tests.sh and README.md;
-- diagnosed the Windows CRLF issue and added .gitattributes to keep compiler and test files on LF;
-- helped verify the implementation in the Ubuntu Multipass environment.
+What the AI contributed:
+- inspected the Practice 3 compiler, tests, documentation, branch, and commits;
+- extended the byte lexer with i64, bool, true, false, ==, and !=;
+- extended the parser and AST with declaration types, boolean literals, and
+  comparison precedence;
+- implemented a separate SemanticChecker visitor with its own typed symbol
+  table, expression types, resolved declaration links, all three old checks,
+  the new type rules, constant range checks, and line:column diagnostics;
+- removed semantic checks and symbol lookup from LLVM code generation;
+- implemented typed allocas/constants, i32-to-i64 sext coercion, signed icmp,
+  and boolean output selected between true/false strings;
+- fixed end-of-line positions so trailing spaces do not shift a parser error;
+- added Practice 4 success/error fixtures and exact AST snapshots while
+  retaining all Practice 2/3 regression fixtures;
+- updated the test runner, grammar, and README;
+- reviewed diffs and organized the work into focused Git commits.
+
+What was taken as-is:
+The overall Practice 3 architecture (byte lexer, recursive-descent parser, AST
+nodes, visitor-based llvmlite generator, CLI error handling) was retained and
+extended. Suggested assignment concepts such as SemanticChecker, node.type,
+node.decl, and a shared coerce helper were adopted, with implementation adapted
+to this repository.
+
+What was changed after review:
+The Practice 3 reviewer noted that trailing spaces moved the reported
+end-of-line column. Parser end positions now come from the last real token, not
+the physical newline column, so `x := x +    ` reports column 9. Practice 3 AST
+snapshots were deliberately edited only on declaration lines to add `i32`.
 
 Verification performed:
-- Python syntax check passed;
-- all five expected AST dumps matched exactly;
-- every valid program generated an LLVM module accepted by llvmlite.binding.verify();
-- all eight invalid programs returned a non-zero exit code, the exact expected error and line:column, and no output file;
-- the complete Ubuntu test suite passed: Passed: 13, Failed: 0;
-- tests/valid5.txt executed through lli and printed: Program exit with result 120;
-- git diff checks passed and the work was split into focused implementation, test, and fix commits.
+- checked the working tree and branch ancestry before editing;
+- checked all patches with `git diff --check`;
+- retained all old valid/error tests and added six valid plus six invalid
+  Practice 4 programs;
+- every valid fixture has an exact AST snapshot and expected runtime output;
+- the runner checks compiler status, AST, lli output, stderr, and absence of IR
+  after errors.
+
+Environment note:
+The provided Windows Python installation could not start in this execution
+session (Windows reported a terminated logon session), and WSL had no installed
+distribution. Therefore runtime execution was prepared for and must be run in
+the course Ubuntu/Multipass environment with `bash run_tests.sh`.
 
 Outcome:
-Accepted. AI assistance was substantial and included implementation, test design, debugging, documentation, and Git workflow support. The final compiler behavior was verified by the user in the Ubuntu + llvmlite + lli environment.
+AI assistance was substantial: implementation, diagnostics, tests,
+documentation, review, and Git workflow. The repository owner will add
+vovaskochko as the pull-request reviewer, as required by the assignment.
