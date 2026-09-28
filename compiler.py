@@ -41,8 +41,12 @@ class Token:
 
 KEYWORDS = {
     "i32",
+    "i64",
+    "bool",
     "mut",
     "exit",
+    "true",
+    "false",
 }
 
 
@@ -218,13 +222,16 @@ def lex(data: bytes):
                 start_line = line
                 start_col = col
 
-            # = alone is illegal
+            # comparisons begin with = or !
             elif b == ord("="):
-                error_at(
-                    line,
-                    col,
-                    "unexpected byte '='",
-                )
+                state = "EQUAL"
+                start_line = line
+                start_col = col
+
+            elif b == ord("!"):
+                state = "BANG"
+                start_line = line
+                start_col = col
 
             # ASCII only
             elif b > 127:
@@ -349,6 +356,20 @@ def lex(data: bytes):
                     "':' is not followed by '='",
                 )
 
+        elif state == "EQUAL":
+            if b == ord("="):
+                tokens.append(Token("operator", "==", start_line, start_col))
+                state = "START"
+            else:
+                error_at(start_line, start_col, "expected '==' (a single '=' is not an operator)")
+
+        elif state == "BANG":
+            if b == ord("="):
+                tokens.append(Token("operator", "!=", start_line, start_col))
+                state = "START"
+            else:
+                error_at(start_line, start_col, "expected '!=' (a single '!' is not an operator)")
+
         i += 1
         col += 1
 
@@ -405,15 +426,16 @@ class StmtNode(Node):
 
 
 class DeclNode(StmtNode):
-    def __init__(self, line, col, name, mutable, init):
+    def __init__(self, line, col, name, type_name, mutable, init):
         super().__init__(line, col)
         self.name = name
+        self.type_name = type_name
         self.mutable = mutable
         self.init = init
 
     def label(self):
         qualifier = "mut" if self.mutable else "const"
-        return f"Decl {self.name} {qualifier}"
+        return f"Decl {self.name} {self.type_name} {qualifier}"
 
     def children(self):
         return [self.init]
@@ -480,6 +502,15 @@ class ConstNode(ExprNode):
         return f"Const {self.value}"
 
 
+class BoolNode(ExprNode):
+    def __init__(self, line, col, value):
+        super().__init__(line, col)
+        self.value = value
+
+    def label(self):
+        return f"Bool {'true' if self.value else 'false'}"
+
+
 # ============================================================
 # RECURSIVE-DESCENT PARSER
 # ============================================================
@@ -537,13 +568,13 @@ class Parser:
         self.toks = line_tokens
         self.pos = 0
 
-        if endline is not None:
-            self.line = endline.line
-            self.end_col = endline.col
-        elif line_tokens:
+        if line_tokens:
             last = line_tokens[-1]
             self.line = last.line
             self.end_col = last.col + len(last.text)
+        elif endline is not None:
+            self.line = endline.line
+            self.end_col = 1
 
     def parse_program(self):
         statements = []
@@ -582,7 +613,7 @@ class Parser:
 
     def parse_statement(self):
         token = self.peek()
-        if token.text == "i32":
+        if token.text in ("i32", "i64", "bool"):
             return self.parse_decl()
         if token.kind == "identifier":
             return self.parse_assign()
@@ -592,7 +623,7 @@ class Parser:
         )
 
     def parse_decl(self):
-        self.expect_text("i32")
+        type_token = self.eat()
         mutable = False
 
         if self.peek() is not None and self.peek().text == "mut":
@@ -616,6 +647,7 @@ class Parser:
             name.line,
             name.col,
             name.text,
+            type_token.text,
             mutable,
             init,
         )
@@ -642,6 +674,16 @@ class Parser:
         return ExitNode(keyword.line, keyword.col, value)
 
     def parse_expr(self):
+        node = self.parse_arith()
+
+        if self.peek() is not None and self.peek().text in ("==", "!="):
+            operator = self.eat()
+            right = self.parse_arith()
+            node = BinOpNode(operator.line, operator.col, operator.text, node, right)
+
+        return node
+
+    def parse_arith(self):
         node = self.parse_term()
 
         while (
@@ -704,6 +746,10 @@ class Parser:
                 token.text,
             )
 
+        if token.text in ("true", "false"):
+            self.eat()
+            return BoolNode(token.line, token.col, token.text == "true")
+
         self.fail(
             f"expected a constant or a variable, got {token.text!r}",
             token,
@@ -711,15 +757,117 @@ class Parser:
 
 
 # ============================================================
+# SEMANTIC CHECKER
+# ============================================================
+
+INTEGER_TYPES = ("i32", "i64")
+
+
+class SemanticChecker:
+    def __init__(self):
+        self.symbols = {}
+
+    def visit(self, node):
+        method_name = "visit_" + node.__class__.__name__.removesuffix("Node").lower()
+        return getattr(self, method_name)(node)
+
+    def fail(self, node, message):
+        error_at(node.line, node.col, message)
+
+    def visit_program(self, node):
+        for statement in node.statements:
+            self.visit(statement)
+        self.visit(node.exit)
+
+    def visit_decl(self, node):
+        if node.name in self.symbols:
+            self.fail(node, f"variable '{node.name}' is already declared")
+        self.visit(node.init)
+        self.check_assignable(
+            node.init, node.type_name, node,
+            f"initialise '{node.name}'",
+        )
+        self.symbols[node.name] = node
+
+    def visit_assign(self, node):
+        decl = self.resolve(node, node.name)
+        node.decl = decl
+        if not decl.mutable:
+            self.fail(node, f"cannot assign to '{node.name}': it is not mut")
+        self.visit(node.value)
+        self.check_assignable(
+            node.value, decl.type_name, node,
+            f"assign to '{node.name}'",
+        )
+
+    def visit_exit(self, node):
+        self.visit(node.value)
+
+    def visit_binop(self, node):
+        left_type = self.visit(node.left)
+        right_type = self.visit(node.right)
+        if node.op in ("+", "-", "*"):
+            if left_type not in INTEGER_TYPES:
+                self.fail(node, f"cannot apply '{node.op}' to {left_type}")
+            if right_type not in INTEGER_TYPES:
+                self.fail(node, f"cannot apply '{node.op}' to {right_type}")
+            node.type = "i64" if "i64" in (left_type, right_type) else "i32"
+        else:
+            both_int = left_type in INTEGER_TYPES and right_type in INTEGER_TYPES
+            both_bool = left_type == right_type == "bool"
+            if not (both_int or both_bool):
+                self.fail(node, f"cannot compare {left_type} with {right_type}")
+            node.type = "bool"
+        return node.type
+
+    def visit_var(self, node):
+        node.decl = self.resolve(node, node.name)
+        node.type = node.decl.type_name
+        return node.type
+
+    def visit_const(self, node):
+        if node.value <= 2**31 - 1:
+            node.type = "i32"
+        elif node.value <= 2**63 - 1:
+            node.type = "i64"
+        else:
+            self.fail(node, f"constant {node.value} does not fit in i64")
+        return node.type
+
+    def visit_bool(self, node):
+        node.type = "bool"
+        return node.type
+
+    def resolve(self, node, name):
+        if name not in self.symbols:
+            self.fail(node, f"variable '{name}' is used before its declaration")
+        return self.symbols[name]
+
+    def check_assignable(self, expr, want, at, what):
+        have = expr.type
+        if have == want or (have == "i32" and want == "i64"):
+            return
+        if isinstance(expr, ConstNode) and want == "i32" and have == "i64":
+            self.fail(expr, f"constant {expr.value} does not fit in i32")
+        self.fail(
+            at,
+            f"cannot {what} of type {want} with a value of type {have}",
+        )
+
+
+# ============================================================
 # LLVM SETUP
 # ============================================================
 
+I1 = ir.IntType(1)
 I32 = ir.IntType(32)
+I64 = ir.IntType(64)
 I8 = ir.IntType(8)
+LLVM_TYPES = {"bool": I1, "i32": I32, "i64": I64}
 
 
 def create_llvm():
-    module = ir.Module(name="practice3")
+    module = ir.Module(name="practice4")
     module.triple = llvm.get_default_triple()
 
     main = ir.Function(
@@ -742,34 +890,24 @@ def create_llvm():
         name="printf",
     )
 
-    text = b"Program exit with result %d\n\0"
+    def global_text(name, text):
+        data = text + b"\0"
+        value = ir.GlobalVariable(module, ir.ArrayType(I8, len(data)), name=name)
+        value.linkage = "private"
+        value.global_constant = True
+        value.initializer = ir.Constant(ir.ArrayType(I8, len(data)), bytearray(data))
+        return value
 
-    fmt = ir.GlobalVariable(
-        module,
-        ir.ArrayType(I8, len(text)),
-        name="fmt",
-    )
-
-    fmt.linkage = "private"
-    fmt.global_constant = True
-
-    fmt.initializer = ir.Constant(
-        ir.ArrayType(I8, len(text)),
-        bytearray(text),
-    )
-
-    return module, builder, printf, fmt
+    int_fmt = global_text("int_fmt", b"Program exit with result %lld\n")
+    bool_fmt = global_text("bool_fmt", b"Program exit with result %s\n")
+    true_text = global_text("true_text", b"true")
+    false_text = global_text("false_text", b"false")
+    return module, builder, printf, int_fmt, bool_fmt, true_text, false_text
 
 
 # ============================================================
 # CODE GENERATION VISITOR
 # ============================================================
-
-class Symbol:
-    def __init__(self, ptr, mutable):
-        self.ptr = ptr
-        self.mutable = mutable
-
 
 class CodeGen:
     def __init__(self):
@@ -777,12 +915,11 @@ class CodeGen:
             self.module,
             self.builder,
             self.printf,
-            self.fmt,
+            self.int_fmt,
+            self.bool_fmt,
+            self.true_text,
+            self.false_text,
         ) = create_llvm()
-        self.symbols = {}
-
-    def fail(self, node, message):
-        error_at(node.line, node.col, message)
 
     def visit(self, node):
         method_name = "visit_" + node.__class__.__name__.removesuffix(
@@ -797,44 +934,35 @@ class CodeGen:
         return self.module
 
     def visit_decl(self, node):
-        if node.name in self.symbols:
-            self.fail(
-                node,
-                f"variable '{node.name}' is already declared",
-            )
-
         value = self.visit(node.init)
-        ptr = self.builder.alloca(I32, name=node.name)
-        self.builder.store(value, ptr)
-        self.symbols[node.name] = Symbol(ptr, node.mutable)
+        value = self.coerce(value, node.init.type, node.type_name)
+        node.ptr = self.builder.alloca(LLVM_TYPES[node.type_name], name=node.name)
+        self.builder.store(value, node.ptr)
 
     def visit_assign(self, node):
-        if node.name not in self.symbols:
-            self.fail(
-                node,
-                f"variable '{node.name}' is used before its declaration",
-            )
-
-        symbol = self.symbols[node.name]
-        if not symbol.mutable:
-            self.fail(
-                node,
-                f"cannot assign to '{node.name}': it is not mut",
-            )
-
         value = self.visit(node.value)
-        self.builder.store(value, symbol.ptr)
+        value = self.coerce(value, node.value.type, node.decl.type_name)
+        self.builder.store(value, node.decl.ptr)
 
     def visit_exit(self, node):
         value = self.visit(node.value)
+        if node.value.type == "bool":
+            selected = self.builder.select(
+                value,
+                self.builder.bitcast(self.true_text, ir.PointerType(I8)),
+                self.builder.bitcast(self.false_text, ir.PointerType(I8)),
+                name="bool_text",
+            )
+            fmt = self.bool_fmt
+            argument = selected
+        else:
+            fmt = self.int_fmt
+            argument = self.coerce(value, node.value.type, "i64")
         self.builder.call(
             self.printf,
             [
-                self.builder.bitcast(
-                    self.fmt,
-                    ir.PointerType(I8),
-                ),
-                value,
+                self.builder.bitcast(fmt, ir.PointerType(I8)),
+                argument,
             ],
         )
         self.builder.ret(ir.Constant(I32, 0))
@@ -843,25 +971,38 @@ class CodeGen:
         left = self.visit(node.left)
         right = self.visit(node.right)
 
+        operand_type = node.type
+        if node.op in ("==", "!="):
+            operand_type = "i64" if "i64" in (node.left.type, node.right.type) else node.left.type
+        left = self.coerce(left, node.left.type, operand_type)
+        right = self.coerce(right, node.right.type, operand_type)
+
         if node.op == "+":
             return self.builder.add(left, right)
         if node.op == "-":
             return self.builder.sub(left, right)
-        return self.builder.mul(left, right)
+        if node.op == "*":
+            return self.builder.mul(left, right)
+        predicate = "==" if node.op == "==" else "!="
+        return self.builder.icmp_signed(predicate, left, right)
 
     def visit_var(self, node):
-        if node.name not in self.symbols:
-            self.fail(
-                node,
-                f"variable '{node.name}' is used before its declaration",
-            )
-        return self.builder.load(self.symbols[node.name].ptr)
+        return self.builder.load(node.decl.ptr)
 
     def visit_const(self, node):
-        return ir.Constant(I32, node.value)
+        return ir.Constant(LLVM_TYPES[node.type], node.value)
+
+    def visit_bool(self, node):
+        return ir.Constant(I1, node.value)
+
+    def coerce(self, value, have, want):
+        if have == "i32" and want == "i64":
+            return self.builder.sext(value, I64, name="wide")
+        return value
 
 
 def compile_tree(tree):
+    SemanticChecker().visit(tree)
     return CodeGen().visit(tree)
 
 
@@ -916,11 +1057,13 @@ def main():
 
         tree = Parser(token_lines).parse_program()
 
+        SemanticChecker().visit(tree)
+
         if sys.argv[1] == "--ast":
             tree.dump()
             return 0
 
-        module = compile_tree(tree)
+        module = CodeGen().visit(tree)
 
         # IR is written once, through str(module).
         with open(
