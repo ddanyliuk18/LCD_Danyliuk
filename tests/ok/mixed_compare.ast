@@ -1,0 +1,11 @@
+Program
+  Decl small i32 const
+    Const 10
+  Decl large i64 const
+    Const 10
+  Decl same bool const
+    BinOp ==
+      Var small
+      Var large
+  Exit
+    Var same

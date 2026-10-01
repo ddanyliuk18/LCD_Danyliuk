@@ -1,0 +1,2 @@
+bool result{true}
+exit result
