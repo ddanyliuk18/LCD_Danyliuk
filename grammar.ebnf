@@ -1,14 +1,17 @@
-(* The lexer groups tokens by source line. A vector containing only the
-   endline token is blank; after exit, only blank lines may follow. *)
+(* The lexer groups tokens by source line. Braces are plain tokens; the
+   parser pairs them and controls the line cursor. *)
 
 program   ::= { blank | statement } exit { blank } ;
 blank     ::= "\n" ;
-statement ::= decl | assign ;
-decl      ::= type [ "mut" ] ident "{" expr "}" ;
-type      ::= "i32" | "i64" | "bool" ;
-assign    ::= ident ":=" expr ;
+statement ::= decl | assign | if ;
+decl      ::= type [ "mut" ] ident "{" expr "}" NL ;
+assign    ::= ident ":=" expr NL ;
+if        ::= "if" expr NL block [ "else" NL block ] ;
+block     ::= "{" NL { blank | statement } [ exit NL ] "}" NL ;
 exit      ::= "exit" factor ;
+type      ::= "i32" | "i64" | "bool" ;
 expr      ::= arith [ ("==" | "!=") arith ] ;
 arith     ::= term { ("+" | "-") term } ;
 term      ::= factor { "*" factor } ;
-factor    ::= number | "true" | "false" | ident ;
+factor    ::= number | "true" | "false" | ident | "!" factor ;
+NL        ::= "\n" | end-of-file ;

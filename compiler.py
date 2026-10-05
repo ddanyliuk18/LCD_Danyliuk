@@ -47,6 +47,8 @@ KEYWORDS = {
     "exit",
     "true",
     "false",
+    "if",
+    "else",
 }
 
 
@@ -84,6 +86,9 @@ def lex(data: bytes):
     Lexer is a hand-written state machine.
     """
 
+    # Accept files created by Windows editors while keeping the lexer byte-based.
+    data = data.replace(b"\r\n", b"\n")
+
     lines = []
     tokens = []
 
@@ -100,10 +105,6 @@ def lex(data: bytes):
     col = 1
     i = 0
 
-    # Remember an opening { so that it cannot cross a newline.
-    open_brace_line = None
-    open_brace_col = None
-
     while i <= len(data):
         b = data[i] if i < len(data) else None
 
@@ -115,13 +116,6 @@ def lex(data: bytes):
 
             # End of file
             if b is None:
-                if open_brace_line is not None:
-                    error_at(
-                        open_brace_line,
-                        open_brace_col,
-                        "'{' is not closed before the end of the line",
-                    )
-
                 break
 
             # space or tab
@@ -130,13 +124,6 @@ def lex(data: bytes):
 
             # newline
             elif b == 10:
-                if open_brace_line is not None:
-                    error_at(
-                        open_brace_line,
-                        open_brace_col,
-                        "'{' is not closed before the end of the line",
-                    )
-
                 tokens.append(
                     Token(
                         "endline",
@@ -182,9 +169,6 @@ def lex(data: bytes):
                     )
                 )
 
-                if open_brace_line is None:
-                    open_brace_line = line
-                    open_brace_col = col
 
             # }
             elif b == ord("}"):
@@ -197,8 +181,6 @@ def lex(data: bytes):
                     )
                 )
 
-                open_brace_line = None
-                open_brace_col = None
 
             # arithmetic operators
             elif b in (
@@ -368,7 +350,9 @@ def lex(data: bytes):
                 tokens.append(Token("operator", "!=", start_line, start_col))
                 state = "START"
             else:
-                error_at(start_line, start_col, "expected '!=' (a single '!' is not an operator)")
+                tokens.append(Token("operator", "!", start_line, start_col))
+                state = "START"
+                continue
 
         i += 1
         col += 1
@@ -454,6 +438,36 @@ class AssignNode(StmtNode):
         return [self.value]
 
 
+class BlockNode(Node):
+    def __init__(self, line, col, statements, exit_node=None):
+        super().__init__(line, col)
+        self.statements = statements
+        self.exit = exit_node
+
+    def label(self):
+        return "Block"
+
+    def children(self):
+        return self.statements + ([self.exit] if self.exit is not None else [])
+
+
+class IfNode(StmtNode):
+    def __init__(self, line, col, condition, then_block, else_block=None):
+        super().__init__(line, col)
+        self.condition = condition
+        self.then_block = then_block
+        self.else_block = else_block
+
+    def label(self):
+        return "If"
+
+    def children(self):
+        children = [self.condition, self.then_block]
+        if self.else_block is not None:
+            children.append(self.else_block)
+        return children
+
+
 class ExitNode(Node):
     def __init__(self, line, col, value):
         super().__init__(line, col)
@@ -511,6 +525,18 @@ class BoolNode(ExprNode):
         return f"Bool {'true' if self.value else 'false'}"
 
 
+class NotNode(ExprNode):
+    def __init__(self, line, col, operand):
+        super().__init__(line, col)
+        self.operand = operand
+
+    def label(self):
+        return "Not"
+
+    def children(self):
+        return [self.operand]
+
+
 # ============================================================
 # RECURSIVE-DESCENT PARSER
 # ============================================================
@@ -518,6 +544,7 @@ class BoolNode(ExprNode):
 class Parser:
     def __init__(self, lines):
         self.lines = lines
+        self.line_pos = 0
         self.toks = []
         self.pos = 0
         self.line = 1
@@ -576,14 +603,25 @@ class Parser:
             self.line = endline.line
             self.end_col = 1
 
+    def next_line(self):
+        if self.line_pos >= len(self.lines):
+            return False
+        self.set_line(self.lines[self.line_pos])
+        self.line_pos += 1
+        return True
+
+    def finish_line(self):
+        extra = self.peek()
+        if extra is not None:
+            self.fail(f"unexpected {extra.text!r} after the statement", extra)
+
     def parse_program(self):
         statements = []
         exit_node = None
         last_line = 1
         last_col = 1
 
-        for line_tokens in self.lines:
-            self.set_line(line_tokens)
+        while self.next_line():
             last_line = self.line
             last_col = self.end_col
 
@@ -594,17 +632,16 @@ class Parser:
             if exit_node is not None:
                 self.fail("statement after exit", first)
 
+            if first.text == "else":
+                self.fail("'else' without an 'if'", first)
             if first.text == "exit":
                 exit_node = self.parse_exit()
+                self.finish_line()
             else:
-                statements.append(self.parse_statement())
-
-            extra = self.peek()
-            if extra is not None:
-                self.fail(
-                    f"unexpected {extra.text!r} after the statement",
-                    extra,
-                )
+                statement = self.parse_statement()
+                statements.append(statement)
+                if not isinstance(statement, IfNode):
+                    self.finish_line()
 
         if exit_node is None:
             error_at(last_line, last_col, "program has no exit")
@@ -617,10 +654,77 @@ class Parser:
             return self.parse_decl()
         if token.kind == "identifier":
             return self.parse_assign()
+        if token.text == "if":
+            return self.parse_if()
         self.fail(
             f"cannot start a statement with {token.text!r}",
             token,
         )
+
+    def parse_if(self):
+        keyword = self.expect_text("if")
+        condition = self.parse_expr()
+        self.finish_line()
+
+        if not self.next_line():
+            error_at(keyword.line, keyword.col, "expected '{' on its own line after 'if', found end of file")
+        if not self.toks or self.toks[0].text != "{":
+            token = self.toks[0] if self.toks else None
+            if token is None:
+                self.fail("expected '{' on its own line after 'if', found empty line")
+            self.fail(f"expected '{{' on its own line after 'if', got {token.text!r}", token)
+        then_block = self.parse_block()
+
+        else_block = None
+        if self.line_pos < len(self.lines):
+            saved = self.line_pos
+            self.next_line()
+            if self.toks and self.toks[0].text == "else":
+                else_token = self.eat()
+                self.finish_line()
+                if not self.next_line():
+                    error_at(else_token.line, else_token.col, "expected '{' on its own line after 'else', found end of file")
+                if not self.toks or self.toks[0].text != "{":
+                    token = self.toks[0] if self.toks else None
+                    if token is None:
+                        self.fail("expected '{' on its own line after 'else', found empty line")
+                    self.fail(f"expected '{{' on its own line after 'else', got {token.text!r}", token)
+                else_block = self.parse_block()
+            else:
+                self.line_pos = saved
+
+        return IfNode(keyword.line, keyword.col, condition, then_block, else_block)
+
+    def parse_block(self):
+        opening = self.expect_text("{")
+        self.finish_line()
+        statements = []
+        exit_node = None
+
+        while self.next_line():
+            if not self.toks:
+                continue
+            first = self.peek()
+            if first.text == "}":
+                self.eat()
+                self.finish_line()
+                if not statements and exit_node is None:
+                    error_at(opening.line, opening.col, "empty block")
+                return BlockNode(opening.line, opening.col, statements, exit_node)
+            if first.text == "else":
+                self.fail("'else' without an 'if'", first)
+            if exit_node is not None:
+                self.fail("statement after 'exit' in the same block", first)
+            if first.text == "exit":
+                exit_node = self.parse_exit()
+                self.finish_line()
+            else:
+                statement = self.parse_statement()
+                statements.append(statement)
+                if not isinstance(statement, IfNode):
+                    self.finish_line()
+
+        error_at(opening.line, opening.col, "'{' is never closed")
 
     def parse_decl(self):
         type_token = self.eat()
@@ -730,6 +834,10 @@ class Parser:
                 "expected a constant or a variable, found end of line"
             )
 
+        if token.text == "!":
+            self.eat()
+            return NotNode(token.line, token.col, self.parse_factor())
+
         if token.kind == "number":
             self.eat()
             return ConstNode(
@@ -765,7 +873,7 @@ INTEGER_TYPES = ("i32", "i64")
 
 class SemanticChecker:
     def __init__(self):
-        self.symbols = {}
+        self.scopes = [{}]
 
     def visit(self, node):
         method_name = "visit_" + node.__class__.__name__.removesuffix("Node").lower()
@@ -780,14 +888,31 @@ class SemanticChecker:
         self.visit(node.exit)
 
     def visit_decl(self, node):
-        if node.name in self.symbols:
-            self.fail(node, f"variable '{node.name}' is already declared")
+        frame = self.scopes[-1]
+        if node.name in frame:
+            self.fail(node, f"variable '{node.name}' is already declared in this block")
         self.visit(node.init)
         self.check_assignable(
             node.init, node.type_name, node,
             f"initialise '{node.name}'",
         )
-        self.symbols[node.name] = node
+        frame[node.name] = node
+
+    def visit_block(self, node):
+        self.scopes.append({})
+        for statement in node.statements:
+            self.visit(statement)
+        if node.exit is not None:
+            self.visit(node.exit)
+        self.scopes.pop()
+
+    def visit_if(self, node):
+        condition_type = self.visit(node.condition)
+        if condition_type != "bool":
+            self.fail(node, f"the condition of 'if' must be bool, got {condition_type}")
+        self.visit(node.then_block)
+        if node.else_block is not None:
+            self.visit(node.else_block)
 
     def visit_assign(self, node):
         decl = self.resolve(node, node.name)
@@ -838,10 +963,18 @@ class SemanticChecker:
         node.type = "bool"
         return node.type
 
+    def visit_not(self, node):
+        operand_type = self.visit(node.operand)
+        if operand_type != "bool":
+            self.fail(node, f"cannot apply '!' to {operand_type}")
+        node.type = "bool"
+        return node.type
+
     def resolve(self, node, name):
-        if name not in self.symbols:
-            self.fail(node, f"variable '{name}' is used before its declaration")
-        return self.symbols[name]
+        for frame in reversed(self.scopes):
+            if name in frame:
+                return frame[name]
+        self.fail(node, f"variable '{name}' is used before its declaration")
 
     def check_assignable(self, expr, want, at, what):
         have = expr.type
@@ -867,7 +1000,7 @@ LLVM_TYPES = {"bool": I1, "i32": I32, "i64": I64}
 
 
 def create_llvm():
-    module = ir.Module(name="practice4")
+    module = ir.Module(name="practice5")
     module.triple = llvm.get_default_triple()
 
     main = ir.Function(
@@ -936,8 +1069,46 @@ class CodeGen:
     def visit_decl(self, node):
         value = self.visit(node.init)
         value = self.coerce(value, node.init.type, node.type_name)
-        node.ptr = self.builder.alloca(LLVM_TYPES[node.type_name], name=node.name)
+        node.ptr = self.alloca_in_entry(LLVM_TYPES[node.type_name], node.name)
         self.builder.store(value, node.ptr)
+
+    def alloca_in_entry(self, llvm_type, name):
+        current_block = self.builder.block
+        entry = self.builder.function.entry_basic_block
+        if entry.instructions:
+            self.builder.position_before(entry.instructions[0])
+        else:
+            self.builder.position_at_end(entry)
+        slot = self.builder.alloca(llvm_type, name=name)
+        self.builder.position_at_end(current_block)
+        return slot
+
+    def visit_block(self, node):
+        for statement in node.statements:
+            self.visit(statement)
+        if node.exit is not None:
+            self.visit(node.exit)
+
+    def visit_if(self, node):
+        condition = self.visit(node.condition)
+        function = self.builder.function
+        then_bb = function.append_basic_block("then")
+        else_bb = function.append_basic_block("else") if node.else_block else None
+        merge_bb = function.append_basic_block("merge")
+        self.builder.cbranch(condition, then_bb, else_bb or merge_bb)
+
+        self.builder.position_at_end(then_bb)
+        self.visit(node.then_block)
+        if not self.builder.block.is_terminated:
+            self.builder.branch(merge_bb)
+
+        if else_bb is not None:
+            self.builder.position_at_end(else_bb)
+            self.visit(node.else_block)
+            if not self.builder.block.is_terminated:
+                self.builder.branch(merge_bb)
+
+        self.builder.position_at_end(merge_bb)
 
     def visit_assign(self, node):
         value = self.visit(node.value)
@@ -994,6 +1165,9 @@ class CodeGen:
 
     def visit_bool(self, node):
         return ir.Constant(I1, node.value)
+
+    def visit_not(self, node):
+        return self.builder.xor(self.visit(node.operand), ir.Constant(I1, 1), name="not")
 
     def coerce(self, value, have, want):
         if have == "i32" and want == "i64":
