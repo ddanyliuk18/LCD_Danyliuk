@@ -38,8 +38,11 @@ AI contribution taken into the project:
 - emitted unary `!` as an xor on an LLVM i1 value;
 - added an entry-block allocation helper so every declaration, including one
   inside a branch, creates its alloca in the function entry block;
-- added six successful Practice 5 programs with expected output and AST files;
-- added eleven Practice 5 error programs with exact line:column diagnostics;
+- added seven successful Practice 5 programs with expected output and AST
+  files, including the additional while task;
+- added twelve Practice 5 error programs with exact line:column diagnostics;
+- implemented while parsing and AST output, bool condition checking, and LLVM
+  condition/body/end blocks with a body-to-condition back edge;
 - added a dynamic CRLF regression to the test runner;
 - updated grammar.ebnf and README.md for Practice 5;
 - organized implementation, tests, and documentation into focused commits.
@@ -64,6 +67,8 @@ Verification performed:
 - all Practice 5 AST, runtime, diagnostic, and CRLF checks passed;
 - the nested warm-up program ran through `lli` and printed
   `Program exit with result 20`.
+- the while front end and its non-bool-condition diagnostic were checked
+  locally; the Ubuntu runner and `lli` check are prepared for final execution.
 
 Outcome:
 Practice 5 is implemented and verified. AI assistance was substantial and

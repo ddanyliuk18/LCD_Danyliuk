@@ -8,13 +8,14 @@ source bytes -> lexer -> parser -> AST -> SemanticChecker -> CodeGen -> LLVM IR
 ```
 
 The language supports typed declarations, arithmetic, `==`, `!=`, unary `!`,
-mutable assignment, nested `if`/`else` blocks, exits in branch arms, and one
-final program `exit`. Both LF and CRLF source files are accepted.
+mutable assignment, nested `if`/`else` blocks, `while` loops, exits in blocks,
+and one final program `exit`. Both LF and CRLF source files are accepted.
 
 `SemanticChecker` owns a stack of scope frames and resolves uses to the nearest
 declaration. `CodeGen` emits real then/else/merge basic blocks and keeps every
-`alloca` in the entry block for `opt -passes=mem2reg`. LLVM IR is built only
-with `llvmlite.ir` and written only with `str(module)`.
+`alloca` in the entry block for `opt -passes=mem2reg`. A while loop uses
+condition/body/end blocks and a back edge from its body to its condition. LLVM
+IR is built only with `llvmlite.ir` and written only with `str(module)`.
 
 ## Interface
 
@@ -60,3 +61,5 @@ The Practice 5 cases cover optional and present `else`, nested branches,
 different-type shadowing, exit inside an arm, `!`, assignments in both arms,
 block lifetime, same-frame redeclaration, condition types, brace placement,
 empty/unclosed blocks, and statements after a block exit.
+The additional while case sums the integers from 1 through 10 and prints 55;
+an error case checks that a while condition must be bool.
