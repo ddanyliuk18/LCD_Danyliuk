@@ -134,3 +134,10 @@ for front-end checks but lacked llvmlite; its stripped standard library also
 prevented bootstrapping pip. Therefore LLVM assembly, runtime, and mem2reg must
 still be run by `bash run_tests.sh` plus the documented `opt` command in the
 normal Linux grading environment.
+
+Follow-up verification on the Ubuntu LLVM lab host:
+- activated the repository's existing `.venv` with llvmlite 0.49.0;
+- `bash run_tests.sh` passed all 44 checks with 0 failures, including all
+  Practice 2–4 regressions, Practice 5 AST/runtime/error fixtures, and CRLF;
+- the nested warm-up program ran through `lli` and printed
+  `Program exit with result 20`.
