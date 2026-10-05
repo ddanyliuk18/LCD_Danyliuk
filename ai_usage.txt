@@ -67,8 +67,11 @@ Verification performed:
 - all Practice 5 AST, runtime, diagnostic, and CRLF checks passed;
 - the nested warm-up program ran through `lli` and printed
   `Program exit with result 20`.
-- the while front end and its non-bool-condition diagnostic were checked
-  locally; the Ubuntu runner and `lli` check are prepared for final execution.
+- after adding while, the Ubuntu runner passed all 46 checks with 0 failures;
+- the while sum program ran through `lli` and printed
+  `Program exit with result 55`;
+- inspection of output.ll confirmed the condition-to-body/end conditional
+  branch and the body-to-condition back edge.
 
 Outcome:
 Practice 5 is implemented and verified. AI assistance was substantial and
