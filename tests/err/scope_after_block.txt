@@ -1,0 +1,6 @@
+if true
+{
+ i32 mut inner{5}
+ inner := 6
+}
+exit inner
