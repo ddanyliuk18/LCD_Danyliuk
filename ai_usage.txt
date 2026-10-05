@@ -76,3 +76,61 @@ diagnostics, documentation, verification support, and Git workflow. The final
 compiler has a separate semantic phase and typed code generation, preserves all
 Practice 2/3 behavior, and passes all 26 tests. The repository owner will add
 vovaskochko as the pull-request reviewer.
+
+
+=== AI Usage — Practice 5 ===
+
+Track: Practice 5 — if/else, scopes and LLVM basic blocks
+
+Tool used:
+OpenAI Codex
+
+Prompt summary:
+The complete Practice 5 assignment and the accepted Practice 4 review were
+provided. The review also reported that CRLF input failed on the carriage
+return byte. The AI was asked to apply that fix, implement Practice 5, and
+observe the requirements for implementation, tests, and commits.
+
+AI contribution taken into the project:
+- normalized CRLF to LF at the byte-lexer boundary while leaving a lone CR an
+  invalid byte;
+- changed braces into plain lexer tokens and made lone `!` a token while
+  preserving `!=`;
+- added line-aware parsing for nested blocks, optional else arms, block exits,
+  unary Not, and the specified structural diagnostics;
+- added Block, If, and Not AST nodes and exact AST snapshots;
+- replaced the single semantic symbol table with a stack of frames, including
+  nearest-scope lookup, different-type shadowing, same-frame duplicate checks,
+  bool conditions, and bool-only `!`;
+- generated then/else/merge blocks through llvmlite block objects, guarded
+  every added branch with the current builder block's terminator state, and
+  emitted unary not as an i1 xor;
+- added an entry-block allocation helper so declarations inside branches still
+  create promotable allocas in the function entry block;
+- added six successful Practice 5 programs with expected output and AST files,
+  eleven Practice 5 error programs with exact diagnostics, and a dynamic CRLF
+  regression in the test runner;
+- updated the grammar and README for Practice 5.
+
+Changes made after checking the AI output:
+- corrected the parser cursor handling so an outer block does not re-check the
+  last physical line consumed by a nested if;
+- adjusted error fixtures to reach the intended semantic rule before failing;
+- retained the repository's established root-level `compiler.py` interface.
+
+Verification performed in this workspace:
+- Python syntax parsing succeeded;
+- a temporary minimal import stub was used to execute the real lexer, parser,
+  AST dumper, and SemanticChecker against all fixtures;
+- 17 success programs matched their AST snapshots and 26 error programs
+  matched their exact diagnostics;
+- the same front end accepted a valid fixture converted in memory to CRLF;
+- `git diff --check` passed.
+
+Environment limitation:
+This Windows workspace had no usable project Python with llvmlite, no WSL
+distribution, and no `lli` or `opt`. A separate Python executable was enough
+for front-end checks but lacked llvmlite; its stripped standard library also
+prevented bootstrapping pip. Therefore LLVM assembly, runtime, and mem2reg must
+still be run by `bash run_tests.sh` plus the documented `opt` command in the
+normal Linux grading environment.
