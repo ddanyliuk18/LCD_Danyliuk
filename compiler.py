@@ -49,6 +49,7 @@ KEYWORDS = {
     "false",
     "if",
     "else",
+    "while",
 }
 
 
@@ -468,6 +469,19 @@ class IfNode(StmtNode):
         return children
 
 
+class WhileNode(StmtNode):
+    def __init__(self, line, col, condition, body):
+        super().__init__(line, col)
+        self.condition = condition
+        self.body = body
+
+    def label(self):
+        return "While"
+
+    def children(self):
+        return [self.condition, self.body]
+
+
 class ExitNode(Node):
     def __init__(self, line, col, value):
         super().__init__(line, col)
@@ -640,7 +654,7 @@ class Parser:
             else:
                 statement = self.parse_statement()
                 statements.append(statement)
-                if not isinstance(statement, IfNode):
+                if not isinstance(statement, (IfNode, WhileNode)):
                     self.finish_line()
 
         if exit_node is None:
@@ -656,6 +670,8 @@ class Parser:
             return self.parse_assign()
         if token.text == "if":
             return self.parse_if()
+        if token.text == "while":
+            return self.parse_while()
         self.fail(
             f"cannot start a statement with {token.text!r}",
             token,
@@ -695,6 +711,21 @@ class Parser:
 
         return IfNode(keyword.line, keyword.col, condition, then_block, else_block)
 
+    def parse_while(self):
+        keyword = self.expect_text("while")
+        condition = self.parse_expr()
+        self.finish_line()
+
+        if not self.next_line():
+            error_at(keyword.line, keyword.col, "expected '{' on its own line after 'while', found end of file")
+        if not self.toks or self.toks[0].text != "{":
+            token = self.toks[0] if self.toks else None
+            if token is None:
+                self.fail("expected '{' on its own line after 'while', found empty line")
+            self.fail(f"expected '{{' on its own line after 'while', got {token.text!r}", token)
+        body = self.parse_block()
+        return WhileNode(keyword.line, keyword.col, condition, body)
+
     def parse_block(self):
         opening = self.expect_text("{")
         self.finish_line()
@@ -721,7 +752,7 @@ class Parser:
             else:
                 statement = self.parse_statement()
                 statements.append(statement)
-                if not isinstance(statement, IfNode):
+                if not isinstance(statement, (IfNode, WhileNode)):
                     self.finish_line()
 
         error_at(opening.line, opening.col, "'{' is never closed")
@@ -913,6 +944,12 @@ class SemanticChecker:
         self.visit(node.then_block)
         if node.else_block is not None:
             self.visit(node.else_block)
+
+    def visit_while(self, node):
+        condition_type = self.visit(node.condition)
+        if condition_type != "bool":
+            self.fail(node, f"the condition of 'while' must be bool, got {condition_type}")
+        self.visit(node.body)
 
     def visit_assign(self, node):
         decl = self.resolve(node, node.name)
@@ -1109,6 +1146,24 @@ class CodeGen:
                 self.builder.branch(merge_bb)
 
         self.builder.position_at_end(merge_bb)
+
+    def visit_while(self, node):
+        function = self.builder.function
+        condition_bb = function.append_basic_block("while.cond")
+        body_bb = function.append_basic_block("while.body")
+        end_bb = function.append_basic_block("while.end")
+
+        self.builder.branch(condition_bb)
+        self.builder.position_at_end(condition_bb)
+        condition = self.visit(node.condition)
+        self.builder.cbranch(condition, body_bb, end_bb)
+
+        self.builder.position_at_end(body_bb)
+        self.visit(node.body)
+        if not self.builder.block.is_terminated:
+            self.builder.branch(condition_bb)
+
+        self.builder.position_at_end(end_bb)
 
     def visit_assign(self, node):
         value = self.visit(node.value)
