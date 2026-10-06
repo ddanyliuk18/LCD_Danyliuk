@@ -66,6 +66,29 @@ check_err() {
     fi
 }
 
+check_crlf() {
+    input="tests/ok/if_without_else.txt"
+    expected_ast="tests/ok/if_without_else.ast"
+    rm -f crlf_input.txt output.ll actual.ast actual.err
+    awk '{printf "%s\r\n", $0}' "$input" >crlf_input.txt
+
+    if ! python3 compiler.py crlf_input.txt output.ll >/dev/null 2>actual.err; then
+        echo "CRLF input FAIL (compiler rejected Windows line endings)"
+        cat actual.err
+        failed=$((failed + 1))
+    elif ! python3 compiler.py --ast crlf_input.txt >actual.ast 2>actual.err; then
+        echo "CRLF input FAIL (AST mode rejected Windows line endings)"
+        cat actual.err
+        failed=$((failed + 1))
+    elif ! diff -u "$expected_ast" actual.ast; then
+        echo "CRLF input FAIL (AST differs)"
+        failed=$((failed + 1))
+    else
+        echo "CRLF input PASS"
+        passed=$((passed + 1))
+    fi
+}
+
 echo "=== VALID TESTS ==="
 for input in tests/valid*.txt tests/ok/*.txt; do
     check_ok "$input"
@@ -77,7 +100,11 @@ for input in tests/invalid*.txt tests/err/*.txt; do
     check_err "$input"
 done
 
-rm -f output.ll actual.out actual.err actual.ast
+echo
+echo "=== REGRESSIONS ==="
+check_crlf
+
+rm -f output.ll actual.out actual.err actual.ast crlf_input.txt
 
 echo
 echo "=== RESULT ==="

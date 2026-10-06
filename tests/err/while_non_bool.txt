@@ -1,0 +1,6 @@
+i32 n{3}
+while n
+{
+ exit n
+}
+exit 0
