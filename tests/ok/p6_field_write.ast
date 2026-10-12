@@ -11,7 +11,7 @@ Program
   Decl b Box mut
     Init Box
       Var p
-  Assign b
+  Assign b.p.x
     Const 9
   Exit
     FieldAccess x

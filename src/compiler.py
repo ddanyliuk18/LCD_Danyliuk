@@ -443,7 +443,13 @@ class AssignNode(StmtNode):
         self.value = value
 
     def label(self):
-        return f"Assign {self.name}"
+        target = getattr(self, 'target', None)
+        parts = []
+        while isinstance(target, FieldNode):
+            parts.append(target.name)
+            target = target.base
+        suffix = ''.join('.' + part for part in reversed(parts))
+        return f"Assign {self.name}{suffix}"
 
     def children(self):
         return [self.value]
@@ -645,38 +651,6 @@ class CoreParser:
         if extra is not None:
             self.fail(f"unexpected {extra.text!r} after the statement", extra)
 
-    def parse_program(self):
-        statements = []
-        exit_node = None
-        last_line = 1
-        last_col = 1
-
-        while self.next_line():
-            last_line = self.line
-            last_col = self.end_col
-
-            if not self.toks:
-                continue
-
-            first = self.peek()
-            if exit_node is not None:
-                self.fail("statement after exit", first)
-
-            if first.text == "else":
-                self.fail("'else' without an 'if'", first)
-            if first.text == "exit":
-                exit_node = self.parse_exit()
-                self.finish_line()
-            else:
-                statement = self.parse_statement()
-                statements.append(statement)
-                if not isinstance(statement, (IfNode, WhileNode)):
-                    self.finish_line()
-
-        if exit_node is None:
-            error_at(last_line, last_col, "program has no exit")
-
-        return ProgramNode(1, 1, statements, exit_node)
 
     def parse_statement(self):
         token = self.peek()
@@ -773,51 +747,7 @@ class CoreParser:
 
         error_at(opening.line, opening.col, "'{' is never closed")
 
-    def parse_decl(self):
-        type_token = self.eat()
-        mutable = False
 
-        if self.peek() is not None and self.peek().text == "mut":
-            self.eat()
-            mutable = True
-
-        name = self.expect_kind("identifier", "a variable name")
-
-        token = self.peek()
-        if token is None or token.text != "{":
-            self.fail(
-                f"variable '{name.text}' needs an initialiser in {{}}",
-                token if token is not None else name,
-            )
-        self.eat()
-
-        init = self.parse_expr()
-        self.expect_text("}", "'}'")
-
-        return DeclNode(
-            name.line,
-            name.col,
-            name.text,
-            type_token.text,
-            mutable,
-            init,
-        )
-
-    def parse_assign(self):
-        name = self.expect_kind("identifier", "a variable name")
-        token = self.peek()
-        if token is None or token.text != ":=":
-            if token is None:
-                self.fail(
-                    f"expected ':=' after '{name.text}', found end of line"
-                )
-            self.fail(
-                f"expected ':=' after '{name.text}', got {token.text!r}",
-                token,
-            )
-        self.eat()
-        value = self.parse_expr()
-        return AssignNode(name.line, name.col, name.text, value)
 
     def parse_exit(self):
         keyword = self.expect_text("exit")
@@ -929,10 +859,6 @@ class CoreSemanticChecker:
     def fail(self, node, message):
         error_at(node.line, node.col, message)
 
-    def visit_program(self, node):
-        for statement in node.statements:
-            self.visit(statement)
-        self.visit(node.exit)
 
     def visit_decl(self, node):
         frame = self.scopes[-1]
@@ -1113,17 +1039,7 @@ class CoreCodeGen:
         ).lower()
         return getattr(self, method_name)(node)
 
-    def visit_program(self, node):
-        for statement in node.statements:
-            self.visit(statement)
-        self.visit(node.exit)
-        return self.module
 
-    def visit_decl(self, node):
-        value = self.visit(node.init)
-        value = self.coerce(value, node.init.type, node.type_name)
-        node.ptr = self.alloca_in_entry(LLVM_TYPES[node.type_name], node.name)
-        self.builder.store(value, node.ptr)
 
     def alloca_in_entry(self, llvm_type, name):
         current_block = self.builder.block

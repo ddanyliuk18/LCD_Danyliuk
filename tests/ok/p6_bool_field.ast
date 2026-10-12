@@ -4,7 +4,7 @@ Program
   Decl f Flag mut
     Init Flag
       Bool false
-  Assign f
+  Assign f.set
     Not
       FieldAccess set
         Var f

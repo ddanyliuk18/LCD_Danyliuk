@@ -9,7 +9,7 @@ Program
   Decl q Point const
     Init Point
       Var p
-  Assign p
+  Assign p.x
     Const 5
   Exit
     FieldAccess x
