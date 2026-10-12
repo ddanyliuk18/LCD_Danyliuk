@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 .venv/
 /.agents/
+/output.ll
+/additional.ll
+/rejected.ll
+/actual.*
+/crlf_input.txt
+/phi-check.ll
+/phi-promoted.ll
+/.coverage

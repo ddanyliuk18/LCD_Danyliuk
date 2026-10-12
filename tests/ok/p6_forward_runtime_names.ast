@@ -1,0 +1,11 @@
+Program
+  Function main -> i32
+    Block
+      Exit
+        Call printf
+  Function printf -> i32
+    Block
+      Exit
+        Const 8
+  Exit
+    Call main

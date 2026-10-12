@@ -1,0 +1,13 @@
+struct Point
+{
+ i32 mut x
+ i32 mut y
+}
+struct Box
+{
+ Point mut p
+}
+Point p{1, 2}
+Box mut b{p}
+b.p.x := 9
+exit b.p.x
