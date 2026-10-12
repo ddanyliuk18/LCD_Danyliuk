@@ -1,0 +1,1 @@
+compilation error: line 6:9: braced field initialisation requires a struct, got i32

@@ -1,0 +1,1 @@
+compilation error: line 14:1: whole-object assignment requires every field at every depth to be mut
