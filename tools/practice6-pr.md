@@ -16,7 +16,7 @@ entry alloca checks, CRLF equivalence and mem2reg phi checks. The demo script
 shows the required IR constructs and three line:column rejections.
 
 Final runner: 94 passed, 0 failed. Combined line/branch coverage: 93%.
-Eight focused commits cover the review fix, implementation, tests, cleanup,
+Focused commits cover the review fix, implementation, tests, cleanup,
 validation and documentation.
 
 See docs/verification.md for the final test/coverage results and ai_usage.txt
