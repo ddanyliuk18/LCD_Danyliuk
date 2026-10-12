@@ -1,0 +1,19 @@
+Program
+  Struct Point
+    Field x i32 mut
+    Field y i32 mut
+  Struct Box
+    Field p Point mut
+  Decl p Point const
+    Init Point
+      Const 1
+      Const 2
+  Decl b Box mut
+    Init Box
+      Var p
+  Assign b
+    Const 9
+  Exit
+    FieldAccess x
+      FieldAccess p
+        Var b

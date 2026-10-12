@@ -1,0 +1,15 @@
+struct Point
+{
+ i32 mut x
+ i32 mut y
+}
+struct Box
+{
+ Point mut p
+}
+Point p{1, 2}
+Point q{7, 8}
+Box mut b{p}
+Box c{q}
+b := c
+exit b.p.y

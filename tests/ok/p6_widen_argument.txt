@@ -1,0 +1,6 @@
+fn wide := (i64 x) -> i64
+{
+ exit x
+}
+i32 x{7}
+exit wide(x)

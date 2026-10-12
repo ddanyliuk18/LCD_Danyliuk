@@ -1,0 +1,17 @@
+Program
+  Struct Point
+    Field x i32 mut
+    Field y i32 mut
+  Function get -> i32
+    Field p Point const
+    Block
+      Exit
+        FieldAccess y
+          Var p
+  Decl p Point const
+    Init Point
+      Const 3
+      Const 7
+  Exit
+    Call get
+      Var p
