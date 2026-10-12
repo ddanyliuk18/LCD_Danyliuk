@@ -3,9 +3,10 @@ import contextlib
 import io
 from pathlib import Path
 import sys
+import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.compiler import Parser, SemanticChecker, CodeGen, CompileError, lex
+from src.compiler import Parser, SemanticChecker, CodeGen, CompileError, lex, main
 import llvmlite.binding as llvm
 
 
@@ -51,4 +52,35 @@ text, _ = compile_source(Path('tests/ok/p6_additional.txt').read_bytes())
 assert 'insertvalue' in text
 text, _ = compile_source(Path('tests/ok/phi_both_arms.txt').read_bytes())
 Path('phi-check.ll').write_text(text)
+original_argv = sys.argv
+with tempfile.TemporaryDirectory() as directory:
+    output = Path(directory) / 'output.ll'
+    cases = [
+        (['compiler.py'], 1),
+        (['compiler.py', '--unknown', 'tests/ok/p6_task3.txt'], 1),
+        (['compiler.py', '--tokens', 'tests/ok/p6_task3.txt'], 0),
+        (['compiler.py', '--ast', 'tests/ok/p6_task3.txt'], 0),
+        (['compiler.py', 'tests/ok/p6_task3.txt', str(output)], 0),
+        (['compiler.py', 'tests/err/p6_unknown_field.txt', str(output)], 1),
+        (['compiler.py', '--ast', 'tests/err/p6_unknown_field.txt'], 1),
+    ]
+    try:
+        for argv, expected_status in cases:
+            sys.argv = argv
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                assert main() == expected_status, argv
+            if argv[1:2] == ['--tokens']:
+                assert "'struct'\tkeyword\t1:1" in stdout.getvalue()
+            if argv[1:2] == ['--ast'] and expected_status == 0:
+                assert stdout.getvalue() == Path(argv[2]).with_suffix('.ast').read_text()
+            if len(argv) == 3 and argv[2] == str(output):
+                if expected_status:
+                    assert not output.exists(), 'stale IR survived a compilation error'
+                    assert stderr.getvalue() == Path(argv[1]).with_suffix('.expected').read_text()
+                else:
+                    assert output.exists()
+                    llvm.parse_assembly(output.read_text()).verify()
+    finally:
+        sys.argv = original_argv
 print('IR verification, entry allocas, repeated compilation, all valid CRLF and AST checks passed')
