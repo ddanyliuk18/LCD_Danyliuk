@@ -624,6 +624,12 @@ class Parser:
         self.line_pos += 1
         return True
 
+    def next_nonempty_line(self):
+        while self.next_line():
+            if self.toks:
+                return True
+        return False
+
     def finish_line(self):
         extra = self.peek()
         if extra is not None:
@@ -682,7 +688,7 @@ class Parser:
         condition = self.parse_expr()
         self.finish_line()
 
-        if not self.next_line():
+        if not self.next_nonempty_line():
             error_at(keyword.line, keyword.col, "expected '{' on its own line after 'if', found end of file")
         if not self.toks or self.toks[0].text != "{":
             token = self.toks[0] if self.toks else None
@@ -694,11 +700,11 @@ class Parser:
         else_block = None
         if self.line_pos < len(self.lines):
             saved = self.line_pos
-            self.next_line()
+            self.next_nonempty_line()
             if self.toks and self.toks[0].text == "else":
                 else_token = self.eat()
                 self.finish_line()
-                if not self.next_line():
+                if not self.next_nonempty_line():
                     error_at(else_token.line, else_token.col, "expected '{' on its own line after 'else', found end of file")
                 if not self.toks or self.toks[0].text != "{":
                     token = self.toks[0] if self.toks else None
@@ -716,7 +722,7 @@ class Parser:
         condition = self.parse_expr()
         self.finish_line()
 
-        if not self.next_line():
+        if not self.next_nonempty_line():
             error_at(keyword.line, keyword.col, "expected '{' on its own line after 'while', found end of file")
         if not self.toks or self.toks[0].text != "{":
             token = self.toks[0] if self.toks else None
