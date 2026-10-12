@@ -1,80 +1,72 @@
-=== AI Usage — Practice 5 ===
+AI Usage — Practice 6
 
-Track:
-Practice 5 — if/else, scopes and LLVM basic blocks
+Tool: OpenAI Codex, with shell, file editing, Python, llvmlite, LLVM, coverage,
+Git and GitHub CLI. No additional AI agents were used.
 
-Tool used:
-OpenAI Codex
+Prompt supplied:
+The user provided the teacher's accepted Practice 5 review, including the
+remaining blank-line problem before an if brace and between a block and else.
+The user requested a careful Practice 6 implementation, regression protection,
+tests, meaningful commits, and the additional nested initialisation task.
+The complete structs/functions assignment and submission instructions were
+included: src/, tests/, ai_usage.txt, practice-6 branch, PR into main and
+vovaskochko as reviewer. No numeric minimum number of commits was present
+in the supplied assignment; work was separated into focused commits.
 
-Prompt summary:
-The complete Practice 5 assignment and the accepted Practice 4 review were
-provided. The review also reported that CRLF input failed on the carriage
-return byte. The AI was asked to inspect the existing repository, fix that
-regression, implement Practice 5, preserve previous behavior, add the required
-tests and AST files, verify the result, and organize the work into focused Git
-commits.
+AI work taken into the project:
+- reviewed the earlier compiler, fixtures, branch and commit history;
+- fixed blank-line handling around control-flow braces and else, with a
+  regression fixture and separate commit;
+- moved the implementation to src/ and preserved the root compiler.py CLI;
+- extended the byte lexer with struct/fn, punctuation and the result arrow;
+- added AST nodes and parsing for structs, signatures, calls, field chains,
+  multiple initializer values and recursively nested braces;
+- enforced structs/functions/statements/exit ordering and top-level-only
+  struct/function declarations;
+- collected signatures before function body checking and generation;
+- checked prior struct types, nonempty layouts, duplicate names/fields/
+  parameters, function-local visibility and immutable parameter copies;
+- checked argument arity/types and widening, exact function return types,
+  initializer arity/types/copies and built-in top-level exit types;
+- checked every mut link of field writes and recursive field mutability
+  before whole-object replacement;
+- attached numeric field indices and declaration/function links to the AST;
+- generated named LLVM types, GEP, value copies, insertvalue, functions,
+  calls, parameter entry slots and ret using llvmlite.ir exclusively;
+- added independently specified runtime results for 16 new valid programs,
+  30 invalid programs, AST snapshots and exact diagnostic expectations;
+- added module/entry-allocation checks, repeated compilation, LF/CRLF checks,
+  CLI stale-output cleanup checks and a mem2reg phi assertion;
+- created a demonstration script for the four supplied examples, required
+  IR constructs and three rejected programs;
+- prepared grammar, README, requirements, verification record and PR text.
 
-AI contribution taken into the project:
-- reviewed the Practice 4 lexer, parser, AST, semantic pass, LLVM generator,
-  tests, documentation, branch state, and commit history;
-- normalized CRLF to LF at the byte-lexer boundary while leaving a lone CR an
-  invalid byte;
-- added the `if` and `else` keywords;
-- changed braces into plain lexer tokens and moved brace pairing to the parser;
-- made lone `!` a token while preserving `!=`;
-- added a physical-line cursor to the recursive-descent parser;
-- implemented nested blocks, optional else arms, block exits, unary Not, and
-  the required structural diagnostics;
-- added Block, If, and Not AST nodes and exact AST snapshots;
-- replaced the single semantic symbol table with a stack of frames;
-- implemented innermost-frame declarations, outward lookup, different-type
-  shadowing, and same-frame duplicate checks;
-- kept `node.decl` links on variable uses and assignments so code generation
-  does not resolve names;
-- added bool-only checks for if conditions and `!` operands;
-- generated then, else, and merge blocks through llvmlite block objects;
-- checked the builder's current block before adding a branch, allowing exit
-  inside an arm and nested if statements;
-- emitted unary `!` as an xor on an LLVM i1 value;
-- added an entry-block allocation helper so every declaration, including one
-  inside a branch, creates its alloca in the function entry block;
-- added seven successful Practice 5 programs with expected output and AST
-  files, including the additional while task;
-- added twelve Practice 5 error programs with exact line:column diagnostics;
-- implemented while parsing and AST output, bool condition checking, and LLVM
-  condition/body/end blocks with a body-to-condition back edge;
-- added a dynamic CRLF regression to the test runner;
-- updated grammar.ebnf and README.md for Practice 5;
-- organized implementation, tests, and documentation into focused commits.
+Taken as-is versus changed during review:
+AI assistance covered most implementation, test and documentation code.
+The earlier compiler behavior and existing fixtures were retained. New runtime
+expectations were written from the assignment/manual calculations, not copied
+from the generated compiler's output. AST/error snapshots were initially
+recorded by authoring scripts and reviewed against source locations and rules;
+the test runner never regenerates expectations.
+After checks, the implementation was revised to preserve the old assignment
+and else diagnostics, use a fresh LLVM type context per compilation, expose
+complete assignment field paths in the AST, remove superseded base methods,
+and check parameters and outermost locals in the same scope.
+Three AST snapshots were corrected after field paths became visible.
+The first complete runner reported 93 passed and one structural-check failure
+because a newly changed AST snapshot was still outdated. That snapshot was
+corrected and the final checks rerun. WSL dependency caching was also moved
+from /tmp to /var/tmp after a WSL restart cleared /tmp.
 
-Changes made after checking the AI output:
-- corrected parser cursor handling so an outer block does not re-check the
-  last physical line consumed by a nested if;
-- adjusted error fixtures so each program reaches the intended semantic rule;
-- retained the repository's established root-level `compiler.py` interface;
-- activated the repository's existing Ubuntu virtual environment before the
-  final LLVM test run.
+Verification:
+Python 3.12, llvmlite 0.50.0, LLVM 18 and coverage 7.16.2 on Ubuntu WSL.
+LLVM binding parse_assembly and verify were used only for validation, never
+to construct IR. Runtime execution used lli. All IR construction uses
+llvmlite.ir and the only IR serialization is str(module).
+The demo printed true, 55, 28 and 36, and displayed Point, GEPs, definitions
+and calls. Rejections included unknown_field (7:8), const_link (13:3) and
+return_type (3:2). Final suite and coverage results are recorded in
+docs/verification.md; Git commits and the pull request retain the work history.
 
-Verification performed:
-- Python syntax parsing succeeded;
-- the lexer, parser, AST dumper, and semantic checker were first checked against
-  all fixtures in the Windows workspace;
-- a valid fixture converted to CRLF was accepted and produced the same AST;
-- `git diff --check` passed;
-- on the Ubuntu LLVM lab host, `.venv` used llvmlite 0.49.0;
-- `bash run_tests.sh` passed all 44 checks with 0 failures;
-- all Practice 2–4 regression programs retained their previous behavior;
-- all Practice 5 AST, runtime, diagnostic, and CRLF checks passed;
-- the nested warm-up program ran through `lli` and printed
-  `Program exit with result 20`.
-- after adding while, the Ubuntu runner passed all 46 checks with 0 failures;
-- the while sum program ran through `lli` and printed
-  `Program exit with result 55`;
-- inspection of output.ll confirmed the condition-to-body/end conditional
-  branch and the body-to-condition back edge.
-
-Outcome:
-Practice 5 is implemented and verified. AI assistance was substantial and
-included implementation, test design, diagnostics, documentation, local and
-Ubuntu verification support, and Git workflow. The submitted ai_usage.txt
-describes Practice 5 only.
+The student still needs to show the result to the teacher during practice or
+within the stated three-day window. AI did not conduct that presentation.
