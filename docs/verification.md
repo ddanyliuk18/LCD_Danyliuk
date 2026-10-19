@@ -122,3 +122,8 @@ its results were discarded. Real diagnostic/GEP regressions were corrected,
 then the complete runner passed alone. No legacy fixtures were rewritten to
 hide differences. IR construction is entirely llvmlite.ir; only validation uses
 binding parse_assembly. The teacher presentation is still the student's action.
+
+Submission dependency: Practice 6 PR #5 was still open when Practice 7 PR #6
+was created against the required main branch. The PR description identifies
+this dependency. Merging #5 first will narrow #6 to the Practice 7 changes.
+A final documentation commit records this verified submission relationship.

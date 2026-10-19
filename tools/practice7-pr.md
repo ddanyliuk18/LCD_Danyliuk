@@ -15,3 +15,8 @@ Commits separate implementation, compatibility/name fixes, tests, and docs.
 The supplied assignment specifies no numeric commit minimum. README, grammar,
 ai_usage.txt and docs/verification.md describe behavior and measured checks.
 Run bash tools/demo_practice7.sh for the teacher presentation.
+
+Dependency: builds on Practice 6 in #5, which is still open. The required target
+is main, so this PR currently includes that foundation. Merge #5 first to reduce
+the displayed diff to the Practice 7 continuation; do not merge this PR merely
+to submit it for teacher review.
