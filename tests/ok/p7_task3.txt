@@ -1,0 +1,54 @@
+struct Point
+{
+ i32 mut x
+ i32 mut y
+ fn d2 := () -> i32
+ {
+  i32 r{x * x + y * y}
+  exit r
+ }
+ fn shift := (i32 dx) -> i32
+ {
+  x := x + dx
+  exit x
+ }
+ fn moved := (i32 dx) -> Point
+ {
+  Point q{x + dx, y}
+  exit q
+ }
+ fn add := (i32 a, i32 b) -> i32
+ {
+  i32 r{x + a + b}
+  exit r
+ }
+ fn twice := () -> i32
+ {
+  exit add(d2(), d2())
+ }
+}
+struct Circle
+{
+ Point center
+ i32 radius
+ fn area2 := () -> i32
+ {
+  i32 r{radius * radius * 3}
+  exit r
+ }
+ fn grown := (i32 dr) -> Circle
+ {
+  Circle g{center, radius + dr}
+  exit g
+ }
+}
+Point p{read(), read()}
+Circle c{p, 2}
+i64 big{3000000000}
+print("p and c:")
+print(p)
+print(c)
+print(p.x + p.y)
+print(big * 2)
+print(p.x == 3)
+exit c.radius

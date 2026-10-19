@@ -1,0 +1,129 @@
+Program
+  Struct Point
+    Field x i32 mut
+    Field y i32 mut
+    MemberFn d2 -> i32
+      Block
+        Decl r i32 const
+          BinOp +
+            BinOp *
+              Var x
+              Var x
+            BinOp *
+              Var y
+              Var y
+        Exit
+          Var r
+    MemberFn shift -> i32
+      Field dx i32 const
+      Block
+        Assign x
+          BinOp +
+            Var x
+            Var dx
+        Exit
+          Var x
+    MemberFn moved -> Point
+      Field dx i32 const
+      Block
+        Decl q Point const
+          Init Point
+            BinOp +
+              Var x
+              Var dx
+            Var y
+        Exit
+          Var q
+    MemberFn add -> i32
+      Field a i32 const
+      Field b i32 const
+      Block
+        Decl r i32 const
+          BinOp +
+            BinOp +
+              Var x
+              Var a
+            Var b
+        Exit
+          Var r
+    MemberFn twice -> i32
+      Block
+        Exit
+          Call add
+            Call d2
+            Call d2
+  Struct Circle
+    Field center Point const
+    Field radius i32 const
+    MemberFn area2 -> i32
+      Block
+        Decl r i32 const
+          BinOp *
+            BinOp *
+              Var radius
+              Var radius
+            Const 3
+        Exit
+          Var r
+    MemberFn grown -> Circle
+      Field dr i32 const
+      Block
+        Decl g Circle const
+          Init Circle
+            Var center
+            BinOp +
+              Var radius
+              Var dr
+        Exit
+          Var g
+  Function origin -> Point
+    Block
+      Decl o Point const
+        Init Point
+          Const 0
+          Const 0
+      Exit
+        Var o
+  Decl p Point const
+    Init Point
+      Const 3
+      Const 4
+  Decl c Circle const
+    Init Circle
+      Var p
+      Const 2
+  Decl a i32 const
+    MemberCall shift
+      MemberCall moved
+        Var p
+        Const 1
+      Const 2
+  Decl b i32 const
+    FieldAccess radius
+      MemberCall grown
+        Var c
+        Const 3
+  Decl d i32 const
+    MemberCall d2
+      FieldAccess center
+        MemberCall grown
+          Var c
+          Const 1
+  Decl e i32 const
+    FieldAccess x
+      MemberCall moved
+        Call origin
+        Const 7
+  Decl result i32 const
+    BinOp +
+      BinOp +
+        BinOp +
+          BinOp +
+            Var a
+            Var b
+          Var d
+        Var e
+      FieldAccess x
+        Var p
+  Exit
+    Var result

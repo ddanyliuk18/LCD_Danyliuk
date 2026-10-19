@@ -1,0 +1,36 @@
+Program
+  Struct S
+    Field x i32 const
+    MemberFn f -> i32
+      Field x i32 const
+      Block
+        Decl y i32 mut
+          Var x
+        Assign y
+          BinOp +
+            Var y
+            Const 1
+        Exit
+          Var y
+    MemberFn g -> i32
+      Block
+        Decl x i32 mut
+          Const 8
+        Assign x
+          BinOp +
+            Var x
+            Const 1
+        Exit
+          Var x
+  Decl s S const
+    Init S
+      Const 1
+  Decl r i32 const
+    BinOp +
+      MemberCall f
+        Var s
+        Const 4
+      MemberCall g
+        Var s
+  Exit
+    Var r
