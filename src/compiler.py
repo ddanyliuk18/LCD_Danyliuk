@@ -1312,8 +1312,7 @@ class Parser(CoreParser):
             if self.peek().text == 'fn':
                 if not fields:
                     self.fail('member function must follow at least one field')
-                method = self.parse_function()
-                method.__class__ = MemberFnNode
+                method = self.parse_function(MemberFnNode)
                 methods.append(method)
                 continue
             if methods:
@@ -1327,7 +1326,7 @@ class Parser(CoreParser):
             self.finish_line()
         error_at(opening.line, opening.col, "'{' is never closed")
 
-    def parse_function(self):
+    def parse_function(self, node_class=FunctionNode):
         self.eat()
         name = self.expect_kind('identifier', 'a function name')
         self.expect_text(':=')
@@ -1348,7 +1347,7 @@ class Parser(CoreParser):
         body = self.block_after('fn')
         if body.exit is None:
             error_at(name.line, name.col, 'function body must end with exit')
-        return FunctionNode(name, params, result, body)
+        return node_class(name, params, result, body)
 
     def parse_program(self):
         structs, functions, statements = [], [], []
@@ -1455,6 +1454,9 @@ class Parser(CoreParser):
 
     def parse_assign(self):
         name = self.expect_kind('identifier', 'a variable name')
+        if self.peek() is not None and self.peek().text == '(':
+            # Global call statements were already rejected in Practice 6.
+            self.fail(f"expected ':=' after '{name.text}', got '('")
         target = self.parse_chain(name)
         token = self.peek()
         if token is None:
@@ -1745,7 +1747,17 @@ class CodeGen(CoreCodeGen):
                 item.llvm = ir.Function(self.module, ir.FunctionType(self.types[item.result], [self.types[p.type_name] for p in item.params]), name='user.' + item.name)
         methods = [m for s in self.structs.values() for m in s.methods]
         for method in methods:
-            method.llvm = ir.Function(self.module, ir.FunctionType(self.types[method.result], [self.types[method.owner.name].as_pointer()] + [self.types[p.type_name] for p in method.params]), name=method.owner.name + '_' + method.name)
+            # Preserve the teacher's Point_shift spelling while disambiguating
+            # A_b.c versus A.b_c. Global user functions use a separate namespace.
+            name = method.owner.name + '_' + method.name
+            if name in self.module.globals:
+                name = self.module.get_unique_name(name)
+            signature = ir.FunctionType(
+                self.types[method.result],
+                [self.types[method.owner.name].as_pointer()]
+                + [self.types[p.type_name] for p in method.params],
+            )
+            method.llvm = ir.Function(self.module, signature, name=name)
         for item in list(node.statements) + methods:
             if isinstance(item, FunctionNode):
                 self.builder = ir.IRBuilder(item.llvm.append_basic_block('entry'))
@@ -1797,6 +1809,11 @@ class CodeGen(CoreCodeGen):
         return self.builder.gep(self.field_ptr(node.base), [ir.Constant(I32, 0), ir.Constant(I32, node.index)], inbounds=True)
 
     def visit_field(self, node):
+        root = node
+        while isinstance(root, FieldNode):
+            root = root.base
+        if isinstance(root, VarNode):
+            return self.builder.load(self.field_ptr(node))
         return self.builder.extract_value(self.visit(node.base), node.index)
 
     def visit_var(self, node):
