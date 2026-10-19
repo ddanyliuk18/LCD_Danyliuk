@@ -1,0 +1,1 @@
+compilation error: line 3:2: function exit must have type bool, got i32

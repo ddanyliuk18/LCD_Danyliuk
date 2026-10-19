@@ -1,0 +1,17 @@
+Program
+  Function add -> i32
+    Field a i32 const
+    Field b i32 const
+    Block
+      Decl x i32 const
+        BinOp +
+          Var a
+          Var b
+      Exit
+        Var x
+  Exit
+    Call add
+      Const 10
+      Call add
+        Const 2
+        Const 3

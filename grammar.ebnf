@@ -1,18 +1,32 @@
 (* The lexer groups tokens by source line. Braces are plain tokens; the
    parser pairs them and controls the line cursor. *)
 
-program   ::= { blank | statement } exit { blank } ;
+program   ::= { blank | struct } { blank | fn } { blank | statement } exit { blank } ;
+struct    ::= "struct" ident NL "{" NL field_decl { field_decl } { fn } "}" NL ;
+field_decl ::= type [ "mut" ] ident NL ;
+fn        ::= "fn" ident ":=" "(" [ param { "," param } ] ")" "->" type NL block ;
+param     ::= type ident ;
 blank     ::= "\n" ;
-statement ::= decl | assign | if | while ;
-decl      ::= type [ "mut" ] ident "{" expr "}" NL ;
-assign    ::= ident ":=" expr NL ;
-if        ::= "if" expr NL block [ "else" NL block ] ;
-while     ::= "while" expr NL block ;
+statement ::= decl | assign | if | while | print ;
+print     ::= "print" "(" ( string | expr ) ")" NL ;
+string    ::= '"' { byte-except-quote-or-newline } '"' ;
+decl      ::= type [ "mut" ] ident init NL ;
+init      ::= "{" value { "," value } "}" ;
+value     ::= expr | init ;
+assign    ::= ident { "." ident } ":=" expr NL ;
+if        ::= "if" expr NL { blank } block [ { blank } "else" NL { blank } block ] ;
+while     ::= "while" expr NL { blank } block ;
 block     ::= "{" NL { blank | statement } [ exit NL ] "}" NL ;
 exit      ::= "exit" factor ;
-type      ::= "i32" | "i64" | "bool" ;
+type      ::= "i32" | "i64" | "bool" | ident ;
 expr      ::= arith [ ("==" | "!=") arith ] ;
 arith     ::= term { ("+" | "-") term } ;
 term      ::= factor { "*" factor } ;
-factor    ::= number | "true" | "false" | ident | "!" factor ;
+field     ::= ident "." ident { "." ident } ;
+call      ::= ident "(" [ expr { "," expr } ] ")" ;
+chain     ::= ident [ "(" [ expr { "," expr } ] ")" ]
+              { "." ident [ "(" [ expr { "," expr } ] ")" ] } ;
+factor    ::= number | "true" | "false" | chain | "!" factor ;
+(* A suffix requires a struct result. Assignment targets cannot contain calls.
+   read() is a reserved i32 built-in; print is a statement with no value. *)
 NL        ::= "\n" | end-of-file ;

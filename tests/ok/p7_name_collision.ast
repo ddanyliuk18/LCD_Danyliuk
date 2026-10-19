@@ -1,0 +1,33 @@
+Program
+  Struct A_b
+    Field x i32 const
+    MemberFn c -> i32
+      Block
+        Exit
+          Var x
+  Struct A
+    Field x i32 const
+    MemberFn b_c -> i32
+      Block
+        Exit
+          Var x
+  Function A_b_c -> i32
+    Block
+      Exit
+        Const 8
+  Decl a A_b const
+    Init A_b
+      Const 2
+  Decl b A const
+    Init A
+      Const 3
+  Decl r i32 const
+    BinOp +
+      BinOp +
+        MemberCall c
+          Var a
+        MemberCall b_c
+          Var b
+      Call A_b_c
+  Exit
+    Var r

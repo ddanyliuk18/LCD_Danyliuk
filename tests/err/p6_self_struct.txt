@@ -1,0 +1,5 @@
+struct Self
+{
+ Self x
+}
+exit 0
