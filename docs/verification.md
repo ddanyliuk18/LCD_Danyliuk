@@ -64,3 +64,61 @@ by this verification code.
 
 The teacher presentation remains a student action. Run the demo during the
 practice or within the assignment's three-day deadline.
+
+## Practice 7 verification (2026-10-19)
+
+Environment: Ubuntu WSL, Python 3.12, llvmlite 0.50.0, LLVM 18.
+Dependencies were loaded from /var/tmp/lcd-practice6-deps with PYTHONPATH.
+
+Final independent full run:
+
+```text
+bash run_tests.sh
+Passed: 142
+Failed: 0
+```
+
+Includes 16 new valid and 32 new invalid Practice 7 programs; all earlier
+fixtures remain unchanged. Every valid case runs through lli, compares complete
+stdout and exact AST, and is additionally verified as LLVM IR with entry-block
+allocas. Invalid cases compare exact diagnostics, including line:column, and
+ensure no output file survives. Input comes from .in files. Valid and invalid
+front-end checks are repeated with CRLF. mem2reg still produces a phi.
+
+```text
+python3 -m coverage run --branch --source=src tools/verify_ir.py
+python3 -m coverage report -m
+src/compiler.py: 1320 statements, 52 missed, 532 branches, 40 partial, 95%
+```
+
+Coverage measures the in-process compiler/IR/CLI suite. Separate lli runtime
+comparisons validate printed output and scanf input. Coverage is reported as
+combined line/branch coverage; the assignment gives no numeric threshold.
+
+The teacher demo is `bash tools/demo_practice7.sh`. It shows the Task 1 AST
+and result 83, Point_shift with a pointer first argument and GEP/load/add/store,
+field-after-method rejection at 8:2, const-object mutation rejection at 31:6,
+Task 3 with input 3 4 and all expected output lines, and bonus result 46.
+The structural checker asserts the receiver pointer and required instructions,
+a single printf/scanf declaration, temporary storage and extractvalue.
+
+Additional tests cover two-argument calls, implicit member lookup, indirect and
+cyclic mutation propagation, local/parameter shadowing, global/member precedence,
+underscore symbol collisions, prints in loops/branches/functions/members,
+negative integers, i64, bool, percent/backslash literals, nested structures,
+struct call results, and mutations of temporary nested fields without changing
+the original. Negative cases cover declaration order/duplicates, isolation,
+const paths/fields, argument/return types, scalar/type calls, reserved names,
+invalid strings/print/read uses, standalone calls and assignment to temporaries.
+
+Commit sequence for this practice:
+1. f8874b5 — member functions, mutation analysis, built-ins and bonus chains.
+2. 78243aa — Practice 6 compatibility and ambiguous member symbol names.
+3. 07b18f4 — fixtures, stdin runner, LLVM invariants and demonstration script.
+4. Documentation — grammar, usage, AI disclosure and measured verification.
+
+An early overlapping runner invocation produced temporary-file interference;
+its results were discarded. Real diagnostic/GEP regressions were corrected,
+then the complete runner passed alone. No legacy fixtures were rewritten to
+hide differences. IR construction is entirely llvmlite.ir; only validation uses
+binding parse_assembly. The teacher presentation is still the student's action.

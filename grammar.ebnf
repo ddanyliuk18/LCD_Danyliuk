@@ -2,12 +2,14 @@
    parser pairs them and controls the line cursor. *)
 
 program   ::= { blank | struct } { blank | fn } { blank | statement } exit { blank } ;
-struct    ::= "struct" ident NL "{" NL field_decl { field_decl } "}" NL ;
+struct    ::= "struct" ident NL "{" NL field_decl { field_decl } { fn } "}" NL ;
 field_decl ::= type [ "mut" ] ident NL ;
 fn        ::= "fn" ident ":=" "(" [ param { "," param } ] ")" "->" type NL block ;
 param     ::= type ident ;
 blank     ::= "\n" ;
-statement ::= decl | assign | if | while ;
+statement ::= decl | assign | if | while | print ;
+print     ::= "print" "(" ( string | expr ) ")" NL ;
+string    ::= '"' { byte-except-quote-or-newline } '"' ;
 decl      ::= type [ "mut" ] ident init NL ;
 init      ::= "{" value { "," value } "}" ;
 value     ::= expr | init ;
@@ -22,5 +24,9 @@ arith     ::= term { ("+" | "-") term } ;
 term      ::= factor { "*" factor } ;
 field     ::= ident "." ident { "." ident } ;
 call      ::= ident "(" [ expr { "," expr } ] ")" ;
-factor    ::= number | "true" | "false" | ident | field | call | "!" factor ;
+chain     ::= ident [ "(" [ expr { "," expr } ] ")" ]
+              { "." ident [ "(" [ expr { "," expr } ] ")" ] } ;
+factor    ::= number | "true" | "false" | chain | "!" factor ;
+(* A suffix requires a struct result. Assignment targets cannot contain calls.
+   read() is a reserved i32 built-in; print is a statement with no value. *)
 NL        ::= "\n" | end-of-file ;
