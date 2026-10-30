@@ -1,314 +1,329 @@
-AI usage — Practice 8 (2026-10-30)
+AI usage — Practice 9 (2026-10-30)
 
 TOOLS
-OpenAI Codex; PowerShell and apply_patch; Ubuntu WSL; Python 3.12;
-llvmlite 0.50; LLVM 18 lli/opt; coverage.py; Git and GitHub CLI.
-No additional AI agents were used. No AI-generated textual LLVM assembly was
-used: all compiler IR is built with llvmlite.ir and emitted via str(module).
-Binding parse_assembly is used by verification, not to generate compiler IR.
+OpenAI Codex, PowerShell/apply_patch, Ubuntu WSL, Python 3.12,
+llvmlite 0.50, LLVM 18 lli/opt, coverage.py, Git and GitHub CLI.
+No additional AI agents were used. No web research was needed: the full
+assignment was supplied in the user message reproduced below.
 
-PROMPT RECORD
-The literal user message is reproduced below under VERBATIM USER PROMPT,
-including the assignment. It is not a third-person retelling. There were no
-additional user prompts during this implementation at the time of this record.
-Shell commands and code revisions were authored by Codex in response to it.
-
-The earlier Practice 7 disclosure is preserved, unedited, in
-  docs/ai_usage_practice7_original.txt
-The feedback correctly identifies that its Prompt paragraph retells the request
-rather than quoting it. The exact original Practice 7 conversation is not
-available in this session; I have not invented a replacement quotation or
-claimed that the old disclosure was a verbatim prompt.
+PROMPTS
+The full actual task message is quoted under VERBATIM USER PROMPT. It contains
+both the request in Ukrainian and the assignment; it is not a third-person
+summary. No further user prompts were received during this Practice 9 work at
+the time of this record. Commands, implementation and review revisions were
+produced by Codex in response to that message. Previous Practice 8 disclosure
+is preserved unchanged in docs/ai_usage_practice8_original.txt; Practice 7's
+original disclosure remains in docs/ai_usage_practice7_original.txt. I have not
+reconstructed or invented unavailable earlier prompts.
 
 WHAT WAS TAKEN AS-IS
-- The final AI-authored Practice 8 compiler changes in src/compiler.py: capture
-  syntax and AST, callable resolution, semantic lowering to MemberCallNode,
-  generated closure structs/methods/declarations, isolated lambda scope,
-  capture copies, hidden-type restrictions, mut captures and checked AST CLI.
-- The final AI-authored 15 positive and 31 negative Practice 8 source fixtures,
-  expected stdout, parse/checked AST and diagnostic files; runner integration;
-  independent LLVM/lowering checks; teacher demo; grammar and documentation.
-- Runtime expected outputs were specified in the authoring helper from the
-  assignment and arithmetic, not copied from observed execution. AST/error
-  snapshots were recorded explicitly after asserting expected error categories.
-  The verification suite never invokes the fixture authoring helper.
-These statements describe the code delivered by the AI assistant into this
-branch. They do not claim that the student independently authored or manually
-changed the final code. Student review/presentation remains a separate action.
+The final AI-authored artifacts delivered into practice-9 were accepted as-is:
+- src/optimization.py: canonical tree traversal, declaration-ID use counts,
+  assignment pruning, global-call counts, iterative removal, effect graph,
+  recursive-cycle detection, effect propagation and lambda registry cleanup;
+- src/compiler.py: --remove-unused anywhere in the CLI, the same optional
+  compiler API, and semantic declaration links on assignment target variables;
+- 29 tests/opt sources with independently specified full stdout, input files,
+  optimized AST snapshots and source-level removal/round assertions;
+- the dual-mode test runner, independent verifier, weakref measurement,
+  demonstration, README note, Ukrainian walkthrough and submission materials.
+Existing language semantics, llvmlite code generation and earlier test fixtures
+were retained. These statements describe AI-written output delivered into the
+branch. They do not claim that the student independently wrote or edited it;
+no separate student changes were reported during this session.
 
-WHAT WAS CHANGED DURING AI REVIEW
-- Reused the Practice 7 member-call code generator and fixed-point mutation
-  analysis instead of creating another calling convention for closures.
-  Earlier implementation and fixtures were retained.
-- Replaced Call sugar with actual MemberCallNode instances after semantic
-  checks, preserving the original parse AST separately for --ast.
-- Preserved historical typed Init labels in --ast snapshots through a checked
-  copy; an early syntax-only dump had no inferred initializer type.
-- Hid the generated lambda call member from unqualified body lookup: call()
-  in a lambda now resolves only a global function or a captured callable.
-  Added positive and negative tests for that isolation boundary.
-- Changed draft loop fixtures from unsupported '<' syntax to the established
-  '!=' comparison. The language was not expanded beyond the assignment.
-- Added object names to callable argument errors, capture-specific const errors,
-  mutable-receiver diagnostics and source positions.
-- Added explicit GEP/store capture initialization, IR equality of short and
-  explicit calls, nested closure-copy assertions, checked-AST snapshots, and
-  bonus independence/loop/mixed-capture tests beyond the two examples.
-- Split implementation, runtime fixtures, structural verification,
-  documentation and final evidence into meaningful commits. The supplied
-  Practice 8 text specifies no numeric minimum of commits or coverage percent.
+WHAT WAS CHANGED / REVIEWED DURING AI WORK
+- Added the checker's decl/type link to simple assignment targets so the pass
+  uses resolved identities consistently for all writes and field roots.
+- Used canonical syntax edges rather than all Python attributes: lambda bodies
+  are checked through generated members once; params/fields/closure declarations
+  are excluded from dead-variable candidates; semantic back-links are not walked.
+- Updated the generated-struct registry when a global containing lambdas is
+  removed, preventing orphan closure methods from retaining dangling calls.
+- Preserved base Task 1 behavior behind the internal analyze_effects=False
+  option for an independent test; the requested CLI enables the complete bonus.
+- Separated function-body execution from lambda declaration: a lambda's body
+  does not make its enclosing function effectful merely by being declared.
+- Conservatively retained read, print, mutation, while and recursive calls,
+  including effects nested inside arguments and struct initializers.
+- Changed the draft empty-if test's assertion from an 'Else' label to the
+  existing AST's second Block: the prior compiler has no separate Else label.
+  No compiler behavior or old golden was changed to accommodate that assertion.
+- Added handwritten warm-up goldens and exact round counts independent of
+  generated snapshots, plus LLVM verification and full stdout comparisons.
+- Bounded runtime fixtures terminate; an intentionally nonterminating call
+  graph is inspected structurally and is not executed by the verifier.
+- Kept only numeric optimization statistics, then measured a removed node with
+  weakref both before and after gc.collect(), avoiding a test-owned strong ref.
+- Organized source, fixtures, verification, documentation and final measured
+  evidence into meaningful commits. No numeric commit/coverage minimum is
+  present in the supplied assignment.
 
-VERIFICATION
-See docs/verification.md for measured final results and reproducible commands.
-The required task examples and bonus were executed through lli and compared
-with the full expected stdout. Missing captures and lambda arguments are
-rejected with line:column. No claim is made that AI showed the work to the
-teacher; the student must run the provided demonstration for the teacher.
+VALIDATION
+Both complete runner modes passed 189 checks with 0 failures. The optimization
+verifier runs all 29 new programs through lli both ways (58 executions), compares
+complete stdout and optimized AST snapshots, and checks previous IR/errors,
+flag ordering, idempotence, LF/CRLF, fixpoints, effects and memory. Full measured
+coverage, commands and teacher-demo results are in docs/verification.md.
+Runtime expected outputs were specified from the assignment/arithmetic, not
+learned from execution. AST snapshots were authored explicitly after checking
+required/forbidden fragments and selected round counts. The test runner never
+invokes the authoring helper. All compiler IR is built with llvmlite.ir and
+serialized only with str(module); opt is called only by verification tools for
+the pre-existing mem2reg check, never by the compiler's optimization pass.
+The student must personally demonstrate the result to the teacher.
 
 VERBATIM USER PROMPT
-The text between BEGIN and END is the task message as received, including its
-line breaks and the supplied assignment text.
-
 ----- BEGIN USER PROMPT -----
-переглянь фідбек на попередню практику 7 ai_usage.txt for Practice 7 retells the prompts in the third person instead of giving them as you sent them, and does not say what you took as-is and what you changed (-0.5). і також переглянь умову завдання 8 виконай його якісно і вичерпно, зважаючи на вимогу по кількості комітів, покриття тестами та ОБОВЯЗКОВО ВИКОНАЙ ДОДАТКОВЕ ЗАВДАННЯ Practice 8: callable objects and lambdas
-Languages and Compilers Design · Week 8 · due Friday 30 October, 23:59
-In this practice an object becomes something you can call like a function, and a function can be declared where
-a statement stands, together with copies of the variables it needs. Both are sugar: the compiler turns them into a
-struct, a member function and a member call, which it already compiles. Everything from the earlier practices must
-keep working.
+тепер зробімо 9 практику теж на гілці практики 9 з вичерпним і якісним виконанням завдання чітким і правильним ai логами покриттям усіма необхідними тестами та слідуючи вимогам по комітам,БОНУСНИМ ЗАВДАННЯМ  а також по виконанню поясни мені все що зробив Practice 9: the first optimization pass
+Languages and Compilers Design · Week 9 · due Friday 6 November, 23:59
+Until now every pass of the compiler has kept all of the program: the parser built the tree, the checker accepted or
+refused it and rewrote the sugar into what it means, code generation translated it. This week a pass removes parts
+of the program for the first time: variables nobody reads and functions nobody calls. The program still prints the
+same thing.
 Grading (3 points total)
-Task 1 — callable objects: the call rule, the rewrite into a member call, errors 1 pt
-Task 2 — lambdas: captures, names in the body, the rewrite into a struct, errors 1.5 pt
-Task 3 — at least 5 tests in tests/ok and 5 in tests/err 0.5 pt
-Additional task — mut captures, graded separately 1 pt
-Show the result to the teacher during the practice or by Friday 30 October, 23:59. ai_usage.txt is updated for this practice
-(tools, prompts, what you took as-is, what you changed, or “not used”); a missing or stub file is 0 for the practice. Code generation
-stays in llvmlite.ir (or llvm::IRBuilder): the only IR text is str(module); IR assembled from strings gets 0 for
-the task it appears in.
-TASK 1 — CALLABLE OBJECTS (1 POINT)
-A struct that declares a member function named call can be called like a function: triple(14) means
-triple.call(14). The longer form stays legal.
-struct Scale
-{
- i32 k
- fn call := (i32 v) -> i32
- {
- i32 r{v * k}
- exit r
- }
+Task 1 — unused variables: counted per declaration, repeated until nothing changes 1.5 pt
+Task 2 — unused functions, also the ones a removal leaves uncalled 1 pt
+Task 3 — 6 tests in tests/opt, earlier tests green with and without the flag, the note 0.5 pt
+Additional task — calls without effects, graded separately 1 pt
+Show the result to the teacher during the practice or by Friday 6 November, 23:59. ai_usage.txt is updated for this practice
+(tools, prompts, what you took as-is, what you changed, or “not used”); a missing or stub file is 0 for the practice. The pass works
+on the tree: a compiler that runs opt on its own output gets 0 for Tasks 1 and 2. Code generation stays in llvmlite.ir (or
+llvm::IRBuilder): the only IR text is str(module); IR assembled from strings gets 0 for the task it appears in.
+WHAT AN OPTIMIZATION IS
+An optimization is a transformation that keeps what a program does and changes how it does it. “What it does”
+is everything an observer outside the program can see: the lines it prints, the input it reads, the exit value. The
+variables, the functions and the order of the computations are not part of it, so the compiler may change them. C++
+writes this down as the as-if rule: an implementation may do anything that gives the same observable behaviour
+as the program as written.
+The simplest real optimization is removing what has no effect. A C variable nobody reads, compiled by clang
+without and with optimization:
+int main(void) {
+ int unused = 42;
+ return 0;
 }
-struct Counter
+; clang -O0 -S -emit-llvm ; clang -O1 -S -emit-llvm
+%1 = alloca i32, align 4 ret i32 0
+%2 = alloca i32, align 4
+store i32 0, ptr %1, align 4
+store i32 42, ptr %2, align 4
+ret i32 0
+At -O0 the variable gets its slot %2 and its store (%1 is the slot clang keeps for the return value); at -O1 both are
+gone, because nothing reads them, and the program still exits with 0.
+Where an optimization runs. On the tree, where the compiler still knows names, scopes and whole functions;
+on the IR, where LLVM’s opt runs passes such as dce (drop an instruction without side effects whose result is
+unused) and globaldce (drop an internal function nobody references); and on machine code. The two removals
+of this week are done on the tree, by one more visitor that runs after the checker and before code generation. A
+function on the tree is one node: removing it removes its body, with every declaration and call inside it, in one cut.
+Why it iterates. Removing one thing can make another thing unused. If y is initialised from x and nobody reads
+y, then x is read only by a declaration that is about to disappear. The pass repeats until a round removes nothing.
+The loop stops, because every round that does not stop removes at least one declaration or function, and there are
+finitely many.
+When in doubt, keep. An optimization may remove only what it can show nobody observes. A declaration whose
+value calls a function may print, so it stays. A pass that keeps too much is merely slow; a pass that removes too much
+is a wrong compiler. The check is mechanical: every program prints the same thing with the flag and without it.
+WARM-UP (10 MINUTES, ON PAPER)
+Two programs. For each, list the declarations in the order your pass would remove them, count the iterations, and
+write the program that remains.
+1
+i32 x{10}
+i32 y{x}
+i32 z{15}
+exit z
+i32 mut r{0}
+i32 x{1}
+if true
 {
- i32 mut n
- fn call := () -> i32
- {
- n := n + 1
- exit n
- }
+ i32 x{10}
+ r := x
 }
-struct Shape
-{
- Scale scale
- i32 side
- fn grown := () -> i32
- {
- i32 g{scale(side)}
- exit g
- }
-}
-Scale triple{3}
-Counter mut c{0}
-Shape s{{2}, 5}
-print(triple(14))
-print(triple.call(14))
-print(s.scale(7))
-print(s.grown())
-i32 a{c()}
-i32 b{c()}
-print(c)
-i32 r{a * 10 + b}
 exit r
-Expected output:
-42
-42
-14
-10
-Counter{n: 2}
-Program exit with result 12
-scale is a field of Shape, so s.scale(7) is s.scale.call(7); inside grown, scale(side) calls the field of
-its own object. The call of Counter changes n, so it is a mutating member function and the mutation rule holds
-as for any other: with Counter c{0} the call c() is an error.
-The call rule. For a name followed by (:
-1. If the name is a variable visible here (a parameter, a local, a field inside a member function, a capture inside a
-lambda), its type must be a struct that declares call. The call is name.call(args).
-2. Otherwise the name is a function, found as before: a member function of the current struct, then a global
-function.
-3. Otherwise it is an unknown function.
-1
-If the name is both a visible variable and a function, the call is an error at the name: 'twice' is both a variable
-and a function: rename one of them. Declaring both is allowed; only a call twice(…) is refused. The same
-rule works after a dot: in obj.name(args), if name is a field of obj, the call is obj.name.call(args).
-The rewrite. The parser cannot tell a variable from a function: triple(14) is a Call in --ast. The semantic
-pass knows the names, so it makes the decision there and puts a member call in place of the call: the target triple,
-the member function call, the same arguments. That member call is checked by the code that already checks
-member calls (the arguments, the mutation rule), and code generation does not change. The IR of triple(14) and
-of triple.call(14) is the same line:
-%"call.ret" = call i32 @"Scale_call"(%"Scale"* %"triple", i32 14)
-Errors. Each one with line:column; the wording is yours:
-• a variable whose struct has no call: 'p' is not callable: Point has no member function 'call';
-a variable of a built-in type: 'n' is not callable: it is i32;
-• a name that is both a variable and a function, at the call;
-• a wrong number or type of arguments (the message names the object, not call);
-• a mutating call on a const object or through a const field: cannot call 'c': its 'call' changes it,
-and it is not mut.
-TASK 2 — LAMBDAS (1.5 POINTS)
-A lambda is a function declared where a statement stands. The list in brackets names the variables it takes with it,
-its captures:
-statement ::= decl | assign | if | while | print | lambda
-lambda ::= "fn" ident ":=" "[" [ ident { "," ident } ] "]"
- "(" [ type ident { "," type ident } ] ")" "->" type NL block
-A lambda stands at the top level among the statements and inside any block: a function, a member function, if,
-while, another lambda. A line that starts with fn name := [ is a lambda; fn without [ inside a block stays an
-error, and so does a capture list on a member function.
-• A capture is a copy taken at the declaration. Changing the variable later does not change the lambda. A
-lambda declared inside a loop takes the current value on every iteration. Inside the body a capture is const.
-• The body sees its parameters, its locals, its captures and the global functions. Nothing else: not the toplevel variables, not the locals and parameters of the enclosing function, not the fields of the enclosing struct,
-unless they are captured. This is the same rule as for a function body, which does not see the top-level variables
-either. A lambda cannot call itself: its name is declared after its body. A lambda may capture another lambda.
-fn sq := (i32 v) -> i32
-{
- i32 r{v * v}
- exit r
-}
-fn sum_scaled := (i32 factor, i32 a, i32 b) -> i32
-{
- fn times := [factor](i32 v) -> i32
- {
- i32 r{factor * sq(v)}
- exit r
- }
- i32 s{times(a) + times(b)}
- exit s
-}
-i32 mut k{10}
-fn add_k := [k](i32 y) -> i32
-{
- i32 r{k + y}
- exit r
-}
-k := 100
-print(add_k(5))
-print(k)
-print(sum_scaled(2, 3, 4))
-exit add_k(1)
-Expected output:
-15
-100
-50
-Program exit with result 11
-add_k keeps the 10 it took at its declaration; times captures the parameter factor and calls the global function sq.
-The rewrite. A lambda becomes three things the compiler already has:
-1. a struct with one field per capture, of the type of the captured variable. The struct has no name in the language;
-call it lambda.add_k in the compiler: a dot cannot appear in a name a program declares, so it never clashes2. its member function call with the parameters, the return type and the body of the lambda;
-3. a variable add_k of that struct, initialised at this point with the captured values, as lambda.add_k add_k{k}.
-After that, add_k(5) is a callable object from Task 1. Do the rewrite in the semantic pass: the types of the captures
-are known only there. --ast stays the parse tree; add the flag --ast-checked, which prints the tree after the
-semantic pass. A part of it for the program above:
- Lambda add_k -> i32
- Struct lambda.add_k
- Member k i32 const
- MemberFn call -> i32
- Param y i32
+The first takes three iterations: y goes, then x, then nothing. The second is the whole difficulty of Task 1 in a few
+lines: the inner x is read, the outer x is not, and they have the same name.
+THE INTERFACE
+One new flag, anywhere on the command line:
+python3 compiler.py --remove-unused input.txt output.ll # compile the optimized tree
+python3 compiler.py --remove-unused --ast-checked input.txt # print the tree after the pass
+Without the flag the compiler behaves exactly as before. With it, the pass runs once the checker has accepted the
+program: an optimization never sees an invalid program. --ast-checked then shows what code generation will
+get; --ast is still the parse tree.
+TASK 1 — UNUSED VARIABLES (1.5 POINTS)
+What counts as a use
+A variable is used where it is read: in an initialiser, on the right of :=, in a condition, in an argument, in print, in
+an exit, at the start of a field chain p.x, as the object of a member call p.sum(), in a capture list [k], as a callable
+object in a call c(5). An assignment to it is not a use: y := 5 and p.x := 5 on a y or a p nobody reads are as
+dead as the declaration. When a declaration goes, every assignment to that variable goes with it.
+A function can print and read, so a call is never safe to drop without knowing more. The rule for this task: a
+declaration whose initialiser contains a call or read() stays, even with no reads, and so does an assignment whose
+value contains one, together with the declaration of its variable. Calls whose functions really do nothing visible are
+the additional task.
+The pass
+1. One visitor walks the whole tree and builds a table: for every declaration, not every name, the number of reads
+that resolve to it. The checker already resolved each name to its declaration; that is what scope and shadowing
+mean. Reuse that link: a decl field on every variable node, filled by the checker. If your nodes do not carry it
+yet, add it now.
+2. Every declaration with zero reads is removed from its block, together with the assignments to it.
+3. If something was removed, run the visitor again on the new tree: a read that lived in a removed initialiser is
+gone, so another declaration may now be at zero. Stop when an iteration removes nothing.
+Declarations at the top level, inside if and while blocks, inside function bodies, member functions and lambda
+bodies are all in scope of the pass. Parameters, fields and lambdas are not: a parameter belongs to the function’s
+signature, and its callers pass it whether or not the body reads it.
+The second warm-up program, iteration by iteration
+Iteration Declaration Reads Action
+1 r (line 1) 1: exit r keep
+1 x (line 2, outer) 0 remove; the x in r := x is the inner one
+1 x (line 5, inner) 1: r := x keep
+2 r, inner x 1, 1 nothing removed: stop Decl r i32 mut
+ Const 0
+ If
+ Bool true
  Block
- ...
- Decl add_k lambda.add_k const
- Var k
- Assign k
- Const 100
- Print
- CallableCall add_k
- Const 5
-In the IR the struct is a type, call is a member function with the object as its first parameter, and the declaration
-is an alloca, a gep and a store per capture. A part of output.ll:
-%"lambda.add_k" = type {i32}
-define i32 @"lambda.add_k_call"(%"lambda.add_k"* %"this", i32 %"y")
-...
- %"add_k" = alloca %"lambda.add_k"
- ...
- %"k.val" = load i32, i32* %"k"
- %"add_k.0.ptr" = getelementptr inbounds %"lambda.add_k", %"lambda.add_k"* %"add_k", i32 0, i32 0
- store i32 %"k.val", i32* %"add_k.0.ptr"
- store i32 100, i32* %"k"
- %"call.ret" = call i32 @"lambda.add_k_call"(%"lambda.add_k"* %"add_k", i32 5)
-k := 100 is a store into k; the copy inside add_k stays 10.
-The type has no name. So no parameter, return type, variable or field can have it. A lambda cannot be passed as
-an argument, cannot be the value of exit, cannot initialise a declared variable or a field, cannot be assigned, and
-cannot be printed. Its captures are not visible outside its body: add_k.k is an error.
-Errors. Each one with line:column; the wording is yours. The messages of the reference for the program above,
-with one change each:
-• an outer name used in the body without a capture ([] instead of [k]): line 19:11: 'k' is not captured
-by lambda 'add_k': add it to the capture list, [k];
-• an assignment to a capture (k := k + y in the body): line 19:5: cannot assign to 'k': the capture
-'k' is const, write [mut k];
-• a name captured twice ([k, k]): line 17:17: 'k' is captured twice;
-• a name in the capture list that is not visible ([factor, k] in sum_scaled): line 8:26: cannot capture
-'k': no variable 'k' is visible here;
-• a lambda passed as an argument (sq(times)): line 13:14: 'times' is a lambda and cannot be
-passed to 'sq': its type has no name, so no parameter can have it;
-• a lambda as the value of exit, in a declaration of a named type, in an assignment, in print; a parameter named
-like a capture; a lambda calling itself.
-TASK 3 — TESTS (0.5 POINTS)
-At least 5 programs in each folder, covering both tasks:
-• tests/ok: a struct with call called both ways, a callable field, a lambda with no captures that calls a global
-function, a capture changed after the declaration, a lambda inside a function capturing a parameter, a lambda
-inside a loop, a lambda capturing another lambda;
+ Decl x i32 const
+ Const 10
+ Assign r
+ Var x
+ Exit
+ Var r
+The tree after the pass, as --remove-unused --ast-checked prints it: the outer
+x is gone, the inner one and the assignment r := x stay. The program still exits
+with 10.
+Skeleton
+class UseCounter: # one more visitor
+ def __init__(self): self.reads = {} # id(decl) -> count
+ def visit_decl(self, n):
+ self.reads.setdefault(id(n), 0)
+ if any(has_call_or_read(e) for e in n.inits): self.read(n) # kept: may print
+ for e in n.inits: e.accept(self)
+ def visit_var(self, n): self.read(n.decl) # any node with a decl, e.g. p.x
+ def visit_assign(self, n): # the target is not a read,
+ if has_call_or_read(n.value): self.read(n.decl) # unless the value may print
+ n.value.accept(self)
+ def read(self, decl): self.reads[id(decl)] = self.reads.get(id(decl), 0) + 1
+ ... # every other node: visit the children
+def remove_unused(tree):
+ while True:
+ counter = UseCounter(); tree.accept(counter)
+ dead = {d for d, k in counter.reads.items() if k == 0}
+ if not dead: return tree
+ Pruner(dead).prune(tree) # dead DeclNodes and their :=
+Pruner walks every block and rebuilds its statement list without the dead declarations and without the assignments
+whose decl is one of them. Rebuild the list; do not delete from a list you are iterating over. Keys are id(node):
+two declarations named x are two keys.
+Errors and limits
+The pass reports nothing to the user: an unused variable is not an error. A variable that only feeds itself,
+k := k + 1 with nobody else reading k, survives: the right side reads it. That is a limit of counting, not a bug;
+say so in the note.
+Typical pitfalls
+• Counting by name: the outer x gets the inner x’s read and survives. Count per declaration; the checker already
+knows which one a name means.
+• Counting the target of an assignment as a read. y := 5 keeps nothing alive.
+• Forgetting the assignments: the declaration goes, y := 5 stays, and code generation meets a name without
+a slot.
+• Removing parameters. A function that ignores an argument still has that parameter; its callers pass it.
+• An if whose block becomes empty. It stays: its condition is still evaluated, and code generation must accept an
+empty block.
+• Parsing the flags in a fixed position: they may come first, last, or between the paths.
+• Running the pass before the checker: names are not resolved yet, and an invalid program could be “optimized”
+into a valid one.
+TASK 2 — UNUSED FUNCTIONS (1 POINT)
+The same shape, one level up. The visitor also counts the calls of every global function, wherever the call stands: in
 3
-• tests/err: a struct without call, a call on an i32, a name that is both a variable and a function, a missing
-capture, an assignment to a capture, a duplicate capture, an unknown name in the capture list, a lambda passed
-as an argument, a lambda as the value of exit.
-A program that reads input keeps it next to itself in NAME.in; your test script passes this file as the standard input.
-The script compares the whole standard output: the lines of print and the exit line. Programs from the earlier
-practices still compile and print the same results.
-ADDITIONAL TASK — MUT CAPTURES (+1)
-[mut n] gives the lambda its own mutable copy of n: the field of the struct is mut. A call that assigns a mut
-capture is a mutating member function, so the mutation rule decides where it may be called. The closure variable
-is mut when one of its captures is mut, so a call like next() works at the place of the declaration. A capture of
-another lambda is const unless it is written [mut next]. The original variable never changes, and a mut capture
-of a const variable is allowed: it is a copy.
-i32 n{0}
-fn next := [mut n]() -> i32
+the statements, in another function, in a member function, in a lambda body. A function with zero calls is removed
+with its whole body. Then iterate: the removed body may have held the only call of another function. Member
+functions and lambdas stay; only global functions are removed.
+fn twice := (i32 a) -> i32
 {
- n := n + 1
- exit n
-}
-print(next())
-print(next())
-fn twice := [mut next]() -> i32
-{
- i32 a{next()}
- i32 b{next()}
- i32 r{a * 10 + b}
+ i32 r{a + a}
  exit r
 }
-print(twice())
-print(next())
-exit n
-Expected output:
-1
-2
-34
-3
-Program exit with result 0
-twice takes a copy of next whose counter is 2 and counts on that copy; the original next goes on from 2; n is
-still 0. With [next] instead of [mut next] the copy is const, and the call inside twice is an error: line 11:11:
-cannot call 'next': its 'call' changes it, and it is not mut. Add tests: a counter, a mut capture
-changed in a loop, two lambdas with their own copies of one variable, a const and a mut capture in one list, and
-the error above.
+fn helper := (i32 a) -> i32
+{
+ exit twice(a)
+}
+fn unused := () -> i32
+{
+ exit helper(1)
+}
+exit twice(2)
+Iteration 1 removes unused; iteration 2 removes helper, whose only call
+went with it; iteration 3 finds twice still called and stops. The program exits
+with 4 before and after, and with the flag the emitted .ll defines only two
+functions: the one for twice, and main.
+Two functions that call only each other never reach zero calls, so they stay.
+Counting cannot see a cycle; the same reason reference counting cannot free
+one.
+TASK 3 — THE TESTS AND THE NOTE (0.5 POINTS)
+The tests
+An optimization that changes what a program prints is a bug, however much smaller the tree got. Two checks, both
+mechanical:
+• tests/opt: at least 6 programs, each NAME.txt with NAME.astc, the tree printed by --remove-unused
+--ast-checked, and NAME.expected, the output, which must be the same with and without the flag. Cover
+the two warm-up programs, the three-function chain, a declaration inside an if block, a declaration kept because
+its value calls a function that prints, and a program where nothing is removed.
+• Your test script must be able to run every program of tests/ok and tests/err through --remove-unused
+(an option or an environment variable of the script), and it is green both ways: every earlier program prints the
+same and every error is the same.
+The note: who frees a removed subtree
+When your pass unlinks a subtree, who frees it? Answer in a few lines in README.md, under Optimizations, next
+to the line about the self-feeding limit: the implementation language of your compiler; what its memory model does
+with a node nobody points at any more (reference counting, a tracing collector, nothing until you delete); whether
+your nodes keep a pointer back to their parent, and what that would do to a reference count; and one measurement
+that shows what actually happened to one removed node: a weakref.ref(node) in Python that returns None
+after the pass (with or without gc.collect()), shared_ptr::use_count or a run under a sanitizer in C++.
+This is the compiler’s memory, not the compiled program’s: your language has no heap yet, so nothing is freed in
+the binary.
+EXPECTED REACH
+In the room: the warm-up, the counting visitor and the loop of Task 1 with the two warm-up programs passing,
+then Task 2, which reuses the loop. tests/opt and the note are the take-home part. If the loop does not terminate
+or removes the wrong x, drop the loop for now: get one round to print the right count per declaration, show that,
+and add the loop at home.
+ADDITIONAL TASK — CALLS WITHOUT EFFECTS (+1)
+The rule of Task 1 keeps every value that contains a call. Most calls print nothing and read nothing, so the rule
+keeps too much. With the additional task, --remove-unused keeps a value only if it contains read() or a call of
+a function that has an effect:
+• a function whose body contains print or read();
+• a mutating member function: it changes the object it is called on;
+• a function that may not return: its body has a while, or it calls itself, directly or through other functions (a call
+that never returns is observable: the program hangs);
+• a function that calls a function with an effect.
+The last rule is circular when functions call each other, so compute the set as a fixpoint: start from the first three
+rules and add callers until nothing changes. A callable object’s call is the call of its call. Removals now feed each
+other: a removed declaration can take away the only call of a function.
+fn square := (i32 a) -> i32
+{
+ i32 r{a * a}
+ exit r
+}
+fn quiet := (i32 a) -> i32
+{
+ exit square(a)
+}
+fn loud := (i32 a) -> i32
+{
+ print(a)
+ exit a
+}
+i32 a{square(3)}
+i32 b{quiet(4)}
+i32 c{loud(5)}
+exit 0
+With Task 1 alone nothing is removed. With the additional task, iteration 1
+removes a and b, iteration 2 removes quiet, iteration 3 removes square,
+iteration 4 stops. What remains is loud, the declaration of c and exit 0; the
+program prints 5 and exits with 0, as before.
+A mutating call stays even when its result is unused: in i32 t{c.bump()}
+with a bump that adds 1 to a field, t is kept and print(c) still shows
+Counter{n: 1}. A peek that only reads the field has no effect, so
+i32 u{c.peek()} goes.
+Add tests: the program above, the counter with bump and peek, an effect through a chain of two calls (relay
+calling a function that prints), a function with a while and a recursive one, both kept, and a lambda that prints
+next to one that does not.
 SUBMISSION
-Push the compiler, tests/ and ai_usage.txt to the branch practice-8 and open a pull request into main with
-vovaskochko as a reviewer. During the practice, or by Friday 30 October, 23:59, show the teacher:
-• the programs of Task 1 and Task 2 run through lli, with the output shown above;
-• --ast-checked for the Task 2 program, and in output.ll the struct lambda.add_k and its function
-lambda.add_k_call;
-• two rejected programs with line:column: a missing capture and a lambda passed as an argument.
+Push the compiler, tests/ and ai_usage.txt to the branch practice-9 and open a pull request into main with
+vovaskochko as a reviewer. During the practice, or by Friday 6 November, 23:59, show the teacher:
+• --remove-unused --ast-checked for both warm-up programs;
+• the three-function chain compiled with the flag: the exit line with 4, and the .ll whose only defined functions
+are the one for twice, and main;
+• your test script green on every test, once with the flag and once without;
+• the note under Optimizations in README.md.
 ----- END USER PROMPT -----
