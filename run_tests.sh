@@ -34,6 +34,13 @@ check_ok() {
     elif ! diff -u "$expected_ast" actual.ast; then
         echo "${input} FAIL (AST differs)"
         failed=$((failed + 1))
+    elif [[ -f "${base}.checked" ]] && ! python3 compiler.py --ast-checked "$input" >actual.ast 2>actual.err; then
+        echo "${input} FAIL (checked AST rejected it)"
+        cat actual.err
+        failed=$((failed + 1))
+    elif [[ -f "${base}.checked" ]] && ! diff -u "${base}.checked" actual.ast; then
+        echo "${input} FAIL (checked AST differs)"
+        failed=$((failed + 1))
     elif ! lli output.ll <"$stdin" >actual.out 2>actual.err; then
         echo "${input} FAIL (lli rejected the IR)"
         cat actual.err
@@ -109,7 +116,7 @@ done
 echo
 echo "=== REGRESSIONS ==="
 check_crlf
-if python3 tools/verify_ir.py && opt -passes=mem2reg -S phi-check.ll -o phi-promoted.ll && grep -q 'phi i32' phi-promoted.ll; then
+if python3 tools/verify_ir.py && python3 tools/verify_practice8.py && opt -passes=mem2reg -S phi-check.ll -o phi-promoted.ll && grep -q 'phi i32' phi-promoted.ll; then
     echo "LLVM structure and mem2reg PASS"
     passed=$((passed + 1))
 else
