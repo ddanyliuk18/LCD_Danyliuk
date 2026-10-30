@@ -214,3 +214,134 @@ Practice 6 PR #5 and Practice 7 PR #6 were still open during this submission;
 the new PR explicitly identifies that ancestry. Do not merge older work as
 part of this task. The teacher presentation remains the student's action,
 due 30 October 2026 at 23:59 Europe/Kyiv.
+
+## Practice 9 verification (2026-10-30)
+
+Environment: Ubuntu WSL, CPython 3.12, llvmlite 0.50, LLVM 18 and coverage.py.
+Dependencies: `export PYTHONPATH=/var/tmp/lcd-practice6-deps`.
+
+Both complete test modes passed:
+
+```text
+bash run_tests.sh
+Passed: 189
+Failed: 0
+
+bash run_tests.sh --remove-unused
+Passed: 189
+Failed: 0
+```
+
+The final rerun also exercised the equivalent environment-variable interface:
+`REMOVE_UNUSED=1 bash run_tests.sh`, with the same 189/0 result.
+Every earlier valid program runs through lli with complete stdout comparison;
+every earlier invalid program retains its exact line:column diagnostic and
+leaves no output IR. No earlier source/AST/error/output fixture was changed.
+Original parse ASTs remain identical with the flag. Previous checked snapshots
+are compared without optimization; optimized snapshots are checked for the new
+optimization fixtures. Earlier LLVM and mem2reg assertions still pass.
+
+The suite's 189 checks include one new verification group, not just one new
+test program: `tools/verify_practice9.py` checks **29 tests/opt programs**, each
+compiled and executed with and without optimization (**58 lli executions**).
+Every optimized tree is compared with `.astc`, every execution with the full
+independently specified `.expected`, and stdin comes from neighboring `.in`.
+The helper also checks optimized versions of every earlier valid module and
+earlier error fixture in process. Source and snapshots are deterministic under
+LF/CRLF. Optimization is idempotent. Every emitted module passes LLVM verification
+and every alloca remains in its entry block.
+
+The initial 26-fixture suite passed both modes before three further effect
+boundary cases were added: read inside a function, a printing lambda declared
+without executing it, and an unused mut-capture call whose mutation remains
+observable. All 29 then passed the independent verifier and final full rerun.
+
+Independent checks additionally assert:
+
+- handwritten warm-up trees, distinct declaration identities for shadowed x,
+  and exact removal counts per round (including the final no-change round);
+- no assignment target counts as a read; dead scalar/field writes vanish;
+  effectful assignment values keep their destination declaration;
+- parameters, fields, methods and lambdas remain; ordinary variables are
+  processed inside functions, members, lambdas, if/else and while;
+- the three-function chain defines exactly user.twice and main;
+- removing a global also removes its orphan lambda registry entries;
+- every placement of --remove-unused relative to paths and checked-AST mode;
+  parse/token modes stay unchanged; malformed arguments retain usage errors;
+- a patched optimizer is never invoked on a semantically invalid program,
+  including an unused declaration with an unknown name; stale IR is removed;
+- basic Task 1 retains all call initializers when analyze_effects=False;
+  bonus mode removes pure calls and their subsequently uncalled functions;
+- print/read/mutation, nested argument/struct-initializer effects, transitive
+  effect propagation, while and direct/mutual recursion remain effectful;
+- callable objects and generated lambda methods follow the same resolved graph;
+  declaring a lambda does not execute its body;
+- self-feeding variables and mutually called globals survive as required limits.
+
+Potentially nonterminating call graphs are inspected structurally rather than
+executed. Runtime recursive/loop examples are bounded, and lli has a timeout.
+Fixture authoring never runs from the verification suite.
+
+### Coverage
+
+```sh
+python3 -m coverage run --branch --source=src tools/verify_ir.py
+python3 -m coverage run --append --branch --source=src tools/verify_practice8.py
+python3 -m coverage run --append --branch --source=src tools/verify_practice9.py
+python3 -m coverage report -m
+```
+
+```text
+Name                  Stmts   Miss Branch BrPart  Cover
+src/compiler.py        1524     50    624     43    95%
+src/optimization.py     129      0     72      1    99%
+TOTAL                  1653     50    696     44    96%
+```
+
+These are combined line/branch percentages; the new optimization module has
+100% statement coverage. The single partial optimizer branch is the generic
+execution walker stopping on a function/struct root; production analysis starts
+from bodies/expressions. Separate lli processes validate runtime behavior and
+are not included in in-process compiler coverage. No numeric commit/coverage
+minimum is present in the supplied assignment.
+
+### Memory and demonstration
+
+The verifier took a weakref to the declaration in `i32 unused{42}; exit 0`,
+without another strong local reference. Actual observation:
+
+```text
+Removed DeclNode weakref: before gc = None, after gc = None
+```
+
+The reference is asserted to be None after gc.collect; the reported immediate
+None shows this node was already reclaimed by CPython reference counting.
+README's Optimizations section explains reference counting, cyclic GC, absence
+of a generic parent pointer, semantic back-links, strong-parent cycles and the
+difference between compiler memory and the compiled language's absent heap.
+
+`bash tools/demo_practice9.sh` completed successfully:
+
+| Demonstration | Verified observation |
+|---|---|
+| First warm-up | only z and exit z; result 15 in runtime fixtures |
+| Shadowing warm-up | outer x removed; inner x and r assignment remain; result 10 |
+| Three-function chain | result 4; definitions exactly main and user.twice |
+| Bonus pure calls | only loud, c and exit remain; prints 5; result 0 |
+| Memory | weakref None before and after explicit cyclic GC |
+
+The demo prints both optimized warm-up trees, definitions, bonus tree/output,
+the verifier and README note. `bash tools/demo_practice9.sh --full` also runs
+both complete suite modes for the teacher.
+
+Six meaningful Practice 9 commits separate implementation, 26 initial fixtures,
+independent verification/runner/demo, three further effect-boundary regressions,
+documentation/AI disclosure and final evidence/submission body. The literal
+task message and explicit as-is/change record are in ai_usage.txt; earlier
+disclosures are archived. A Ukrainian walkthrough is in
+docs/practice9-explained.md.
+
+Submission: practice-9 -> main, reviewer vovaskochko. Practice 8 PR #7 was still
+open during preparation and is identified as the dependency in the new PR;
+the preceding Practice 6/7 PRs were no longer open. The student must personally
+show the demonstration by 6 November 2026, 23:59 Europe/Kyiv.
