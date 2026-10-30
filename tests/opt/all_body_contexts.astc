@@ -1,0 +1,32 @@
+Program
+  Struct Box
+    Field x i32 const
+    MemberFn get -> i32
+      Block
+        Exit
+          Var x
+  Function helper -> i32
+    Field ignored i32 const
+    Block
+      Exit
+        Const 7
+  Lambda closure -> i32
+    Struct lambda.closure
+      MemberFn call -> i32
+        Block
+          Exit
+            Call helper
+              Const 5
+    Decl closure lambda.closure const
+      Init lambda.closure
+  Decl b Box const
+    Init Box
+      Const 1
+  Print
+    MemberCall get
+      Var b
+  Print
+    CallableCall closure
+      Var closure
+  Exit
+    Const 0

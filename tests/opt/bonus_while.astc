@@ -1,0 +1,12 @@
+Program
+  Function maybe -> i32
+    Block
+      While
+        Bool false
+        Block
+      Exit
+        Const 2
+  Decl unused i32 const
+    Call maybe
+  Exit
+    Const 0

@@ -1,0 +1,17 @@
+Program
+  Struct Point
+    Field x i32 const
+  Struct Box
+    Field p Point const
+    Field n i32 const
+  Decl unused Box const
+    Init Box
+      Init Point
+        Call read
+      Const 3
+  Decl next i32 const
+    Call read
+  Print
+    Var next
+  Exit
+    Const 0

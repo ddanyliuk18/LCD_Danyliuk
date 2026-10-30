@@ -1,0 +1,5 @@
+fn self := []() -> i32
+{
+ exit self()
+}
+exit 0

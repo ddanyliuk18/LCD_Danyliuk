@@ -1,0 +1,9 @@
+fn square := (i32 n) -> i32
+{
+ i32 result{n * n}
+ exit result
+}
+i32 first{square(read())}
+i32 second{read()}
+print(second)
+exit 0

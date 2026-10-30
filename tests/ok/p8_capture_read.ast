@@ -1,0 +1,12 @@
+Program
+  Decl n i32 const
+    Call read
+  Lambda get -> i32
+    Capture n const
+    Block
+      Exit
+        Var n
+  Print
+    Call get
+  Exit
+    Call get

@@ -1,0 +1,13 @@
+Program
+  Function condition -> bool
+    Block
+      Print
+        Const 7
+      Exit
+        Bool true
+  If
+    Call condition
+    Block
+    Block
+  Exit
+    Const 0

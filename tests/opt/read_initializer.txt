@@ -1,0 +1,4 @@
+i32 unread{read()}
+i32 value{read()}
+print(value)
+exit 0

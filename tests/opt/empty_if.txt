@@ -1,0 +1,14 @@
+fn condition := () -> bool
+{
+ print(7)
+ exit true
+}
+if condition()
+{
+ i32 gone{2}
+}
+else
+{
+ i32 other{3}
+}
+exit 0

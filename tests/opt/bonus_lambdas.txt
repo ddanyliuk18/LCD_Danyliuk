@@ -1,0 +1,13 @@
+i32 k{3}
+fn loud := [k]() -> i32
+{
+ print(k)
+ exit k
+}
+fn quiet := [k]() -> i32
+{
+ exit k
+}
+i32 a{loud()}
+i32 b{quiet()}
+exit 0

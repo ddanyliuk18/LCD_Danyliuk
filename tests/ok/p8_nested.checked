@@ -1,0 +1,46 @@
+Program
+  Decl k i32 const
+    Const 3
+  Lambda outer -> i32
+    Struct lambda.outer
+      Field k i32 const
+      MemberFn call -> i32
+        Field v i32 const
+        Block
+          Lambda inner -> i32
+            Struct lambda.inner
+              Field k i32 const
+              Field v i32 const
+              MemberFn call -> i32
+                Block
+                  Decl r i32 const
+                    BinOp +
+                      Var k
+                      Var v
+                  Exit
+                    Var r
+            Decl inner lambda.inner const
+              Init lambda.inner
+                Var k
+                Var v
+          Exit
+            CallableCall inner
+              Var inner
+    Decl outer lambda.outer const
+      Init lambda.outer
+        Var k
+  Lambda copy -> i32
+    Struct lambda.copy
+      Field outer lambda.outer const
+      MemberFn call -> i32
+        Block
+          Exit
+            CallableCall outer
+              Var outer
+              Const 4
+    Decl copy lambda.copy const
+      Init lambda.copy
+        Var outer
+  Exit
+    CallableCall copy
+      Var copy

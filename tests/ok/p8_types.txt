@@ -1,0 +1,13 @@
+i64 wide{2147483648}
+bool flag{true}
+fn get := [wide, flag](i32 n) -> i64
+{
+ if flag
+ {
+  i64 value{wide + n}
+  exit value
+ }
+ exit wide
+}
+print(get(2))
+exit 0

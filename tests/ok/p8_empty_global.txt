@@ -1,0 +1,11 @@
+fn sq := (i32 v) -> i32
+{
+ i32 r{v * v}
+ exit r
+}
+fn square := [](i32 x) -> i32
+{
+ exit sq(x)
+}
+print(square(9))
+exit square.call(4)

@@ -1,0 +1,23 @@
+Program
+  Function sq -> i32
+    Field v i32 const
+    Block
+      Decl r i32 const
+        BinOp *
+          Var v
+          Var v
+      Exit
+        Var r
+  Lambda square -> i32
+    Field x i32 const
+    Block
+      Exit
+        Call sq
+          Var x
+  Print
+    Call square
+      Const 9
+  Exit
+    MemberCall call
+      Var square
+      Const 4

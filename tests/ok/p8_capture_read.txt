@@ -1,0 +1,7 @@
+i32 n{read()}
+fn get := [n]() -> i32
+{
+ exit n
+}
+print(get())
+exit get()

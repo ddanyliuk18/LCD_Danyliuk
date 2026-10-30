@@ -1,0 +1,11 @@
+fn recurse := (i32 n) -> i32
+{
+ if n == 0
+ {
+  exit 1
+ }
+ i32 smaller{n - 1}
+ exit recurse(smaller)
+}
+i32 unused{recurse(2)}
+exit 0

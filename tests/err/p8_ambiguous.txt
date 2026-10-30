@@ -1,0 +1,7 @@
+fn sq := (i32 v) -> i32
+{
+ i32 r{v * v}
+ exit r
+}
+i32 sq{1}
+exit sq(2)

@@ -1,0 +1,13 @@
+struct Box
+{
+ i32 x
+ fn f := () -> i32
+ {
+  fn g := []() -> i32
+  {
+   exit x
+  }
+  exit g()
+ }
+}
+exit 0

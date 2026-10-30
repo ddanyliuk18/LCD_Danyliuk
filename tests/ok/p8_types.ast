@@ -1,0 +1,26 @@
+Program
+  Decl wide i64 const
+    Const 2147483648
+  Decl flag bool const
+    Bool true
+  Lambda get -> i64
+    Capture wide const
+    Capture flag const
+    Field n i32 const
+    Block
+      If
+        Var flag
+        Block
+          Decl value i64 const
+            BinOp +
+              Var wide
+              Var n
+          Exit
+            Var value
+      Exit
+        Var wide
+  Print
+    Call get
+      Const 2
+  Exit
+    Const 0

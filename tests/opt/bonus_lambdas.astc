@@ -1,0 +1,30 @@
+Program
+  Decl k i32 const
+    Const 3
+  Lambda loud -> i32
+    Struct lambda.loud
+      Field k i32 const
+      MemberFn call -> i32
+        Block
+          Print
+            Var k
+          Exit
+            Var k
+    Decl loud lambda.loud const
+      Init lambda.loud
+        Var k
+  Lambda quiet -> i32
+    Struct lambda.quiet
+      Field k i32 const
+      MemberFn call -> i32
+        Block
+          Exit
+            Var k
+    Decl quiet lambda.quiet const
+      Init lambda.quiet
+        Var k
+  Decl a i32 const
+    CallableCall loud
+      Var loud
+  Exit
+    Const 0
