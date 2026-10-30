@@ -1,0 +1,11 @@
+Program
+  Function call -> i32
+    Block
+      Exit
+        Const 23
+  Lambda get -> i32
+    Block
+      Exit
+        Call call
+  Exit
+    Call get

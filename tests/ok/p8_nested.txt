@@ -1,0 +1,15 @@
+i32 k{3}
+fn outer := [k](i32 v) -> i32
+{
+ fn inner := [k, v]() -> i32
+ {
+  i32 r{k + v}
+  exit r
+ }
+ exit inner()
+}
+fn copy := [outer]() -> i32
+{
+ exit outer(4)
+}
+exit copy()

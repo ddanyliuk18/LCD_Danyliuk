@@ -1,0 +1,26 @@
+Program
+  Decl n i32 const
+    Const 2
+  If
+    Bool true
+    Block
+      Lambda value -> i32
+        Capture n const
+        Block
+          Exit
+            Var n
+      Print
+        Call value
+  If
+    Bool true
+    Block
+      Lambda value -> i32
+        Field x i32 const
+        Block
+          Exit
+            Var x
+      Print
+        Call value
+          Const 8
+  Exit
+    Const 0

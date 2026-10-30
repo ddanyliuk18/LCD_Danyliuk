@@ -1,0 +1,9 @@
+fn f := (i32 p) -> i32
+{
+ fn g := []() -> i32
+ {
+  exit p
+ }
+ exit g()
+}
+exit f(1)

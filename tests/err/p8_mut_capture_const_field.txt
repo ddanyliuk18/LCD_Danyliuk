@@ -1,0 +1,11 @@
+struct Box
+{
+ i32 x
+}
+Box b{1}
+fn change := [mut b]() -> i32
+{
+ b.x := 2
+ exit b.x
+}
+exit change()

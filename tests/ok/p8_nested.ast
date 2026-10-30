@@ -1,0 +1,27 @@
+Program
+  Decl k i32 const
+    Const 3
+  Lambda outer -> i32
+    Capture k const
+    Field v i32 const
+    Block
+      Lambda inner -> i32
+        Capture k const
+        Capture v const
+        Block
+          Decl r i32 const
+            BinOp +
+              Var k
+              Var v
+          Exit
+            Var r
+      Exit
+        Call inner
+  Lambda copy -> i32
+    Capture outer const
+    Block
+      Exit
+        Call outer
+          Const 4
+  Exit
+    Call copy

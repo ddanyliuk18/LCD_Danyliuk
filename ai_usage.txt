@@ -1,54 +1,314 @@
-AI Usage — Practice 7
+AI usage — Practice 8 (2026-10-30)
 
-Tool: OpenAI Codex, shell/PowerShell, file editing, Python 3.12, llvmlite 0.50,
-LLVM 18 lli/opt, coverage, Git and GitHub CLI. No additional AI agents used.
+TOOLS
+OpenAI Codex; PowerShell and apply_patch; Ubuntu WSL; Python 3.12;
+llvmlite 0.50; LLVM 18 lli/opt; coverage.py; Git and GitHub CLI.
+No additional AI agents were used. No AI-generated textual LLVM assembly was
+used: all compiler IR is built with llvmlite.ir and emitted via str(module).
+Binding parse_assembly is used by verification, not to generate compiler IR.
 
-Prompt: The user asked in Ukrainian to review Practice 6 and implement a logical,
-complete Practice 7 continuation with thorough tests, meaningful ordered commits
-and bonus work. The supplied assignment specified member declarations/calls,
-local/field/member/global lookup, fixed-point mutation analysis, by-address
-receivers, read/print, exact stdout with .in files, temporary call-result chains,
-ai_usage.txt, branch practice-7, PR into main and reviewer vovaskochko.
-No numeric commit minimum or prescribed commit-by-commit sequence was supplied.
+PROMPT RECORD
+The literal user message is reproduced below under VERBATIM USER PROMPT,
+including the assignment. It is not a third-person retelling. There were no
+additional user prompts during this implementation at the time of this record.
+Shell commands and code revisions were authored by Codex in response to it.
 
-AI work accepted into the project:
-- reviewed Practice 6 parser, semantic checker, llvmlite generator and tests;
-- implemented explicit MemberFn and MemberCall nodes and AST dumps;
-- added struct method ordering and uniqueness checks, signature collection,
-  field fallback, member-first call resolution and top-level variable isolation;
-- implemented receiver pointers, implicit field GEP access and object mutation;
-- recorded direct mutations and dependencies and propagated them to a fixed
-  point, including cyclic calls, then checked mutable receiver paths;
-- implemented reserved read/print names, byte string scanning, scanf input,
-  primitive/bool/string/recursive struct output and one shared printf declaration;
-- implemented chained struct call results using extractvalue and entry slots,
-  permitted mutations of temporary copies and rejected assignment to them;
-- added 16 valid and 32 invalid fixtures, input files, AST/error snapshots,
-  hand-calculated stdout expectations, runner stdin support, LLVM assertions,
-  a teacher demo, grammar and documentation;
-- prepared focused commits and the submission PR.
+The earlier Practice 7 disclosure is preserved, unedited, in
+  docs/ai_usage_practice7_original.txt
+The feedback correctly identifies that its Prompt paragraph retells the request
+rather than quoting it. The exact original Practice 7 conversation is not
+available in this session; I have not invented a replacement quotation or
+claimed that the old disclosure was a verbatim prompt.
 
-Taken as-is versus changed:
-AI assistance supplied most Practice 7 code and fixtures. Practice 6 implementation
-and old fixtures were retained. Runtime expectations were specified from the
-assignment and manual calculations before execution. AST/error snapshots were
-recorded by an explicit authoring helper, then checked against rules and source
-locations; tests never regenerate expectations.
-Review changed initial class reassignment to explicit MemberFn construction,
-disambiguated A_b.c versus A.b_c LLVM names, restored the old standalone-global-
-call diagnostic, and retained GEP reads of ordinary object fields while using
-extractvalue for fields of call results.
-An initial pair of overlapping shell test runs shared temporary files and caused
-spurious stdout/AST mismatches. The final full runner was run alone. The real
-standalone-call diagnostic regression and missing old GEP assertion were fixed
-before final verification. WSL and Git/GitHub operations required sandbox
-escalation; no credentials were written into repository files.
+WHAT WAS TAKEN AS-IS
+- The final AI-authored Practice 8 compiler changes in src/compiler.py: capture
+  syntax and AST, callable resolution, semantic lowering to MemberCallNode,
+  generated closure structs/methods/declarations, isolated lambda scope,
+  capture copies, hidden-type restrictions, mut captures and checked AST CLI.
+- The final AI-authored 15 positive and 31 negative Practice 8 source fixtures,
+  expected stdout, parse/checked AST and diagnostic files; runner integration;
+  independent LLVM/lowering checks; teacher demo; grammar and documentation.
+- Runtime expected outputs were specified in the authoring helper from the
+  assignment and arithmetic, not copied from observed execution. AST/error
+  snapshots were recorded explicitly after asserting expected error categories.
+  The verification suite never invokes the fixture authoring helper.
+These statements describe the code delivered by the AI assistant into this
+branch. They do not claim that the student independently authored or manually
+changed the final code. Student review/presentation remains a separate action.
 
-All IR construction remains in llvmlite.ir. Binding parse_assembly is validation
-only, never an IR construction path. Final test/coverage/demo evidence is in
-docs/verification.md. The student must personally demonstrate the result to the
-teacher; AI cannot perform that presentation.
+WHAT WAS CHANGED DURING AI REVIEW
+- Reused the Practice 7 member-call code generator and fixed-point mutation
+  analysis instead of creating another calling convention for closures.
+  Earlier implementation and fixtures were retained.
+- Replaced Call sugar with actual MemberCallNode instances after semantic
+  checks, preserving the original parse AST separately for --ast.
+- Preserved historical typed Init labels in --ast snapshots through a checked
+  copy; an early syntax-only dump had no inferred initializer type.
+- Hid the generated lambda call member from unqualified body lookup: call()
+  in a lambda now resolves only a global function or a captured callable.
+  Added positive and negative tests for that isolation boundary.
+- Changed draft loop fixtures from unsupported '<' syntax to the established
+  '!=' comparison. The language was not expanded beyond the assignment.
+- Added object names to callable argument errors, capture-specific const errors,
+  mutable-receiver diagnostics and source positions.
+- Added explicit GEP/store capture initialization, IR equality of short and
+  explicit calls, nested closure-copy assertions, checked-AST snapshots, and
+  bonus independence/loop/mixed-capture tests beyond the two examples.
+- Split implementation, runtime fixtures, structural verification,
+  documentation and final evidence into meaningful commits. The supplied
+  Practice 8 text specifies no numeric minimum of commits or coverage percent.
 
-The first demo attempt exposed a trailing CR in the last shell-script line
-created on Windows. The script was normalized to LF; the complete demo then
-finished with results 83, 2 (after the required print output), and 46.
+VERIFICATION
+See docs/verification.md for measured final results and reproducible commands.
+The required task examples and bonus were executed through lli and compared
+with the full expected stdout. Missing captures and lambda arguments are
+rejected with line:column. No claim is made that AI showed the work to the
+teacher; the student must run the provided demonstration for the teacher.
+
+VERBATIM USER PROMPT
+The text between BEGIN and END is the task message as received, including its
+line breaks and the supplied assignment text.
+
+----- BEGIN USER PROMPT -----
+переглянь фідбек на попередню практику 7 ai_usage.txt for Practice 7 retells the prompts in the third person instead of giving them as you sent them, and does not say what you took as-is and what you changed (-0.5). і також переглянь умову завдання 8 виконай його якісно і вичерпно, зважаючи на вимогу по кількості комітів, покриття тестами та ОБОВЯЗКОВО ВИКОНАЙ ДОДАТКОВЕ ЗАВДАННЯ Practice 8: callable objects and lambdas
+Languages and Compilers Design · Week 8 · due Friday 30 October, 23:59
+In this practice an object becomes something you can call like a function, and a function can be declared where
+a statement stands, together with copies of the variables it needs. Both are sugar: the compiler turns them into a
+struct, a member function and a member call, which it already compiles. Everything from the earlier practices must
+keep working.
+Grading (3 points total)
+Task 1 — callable objects: the call rule, the rewrite into a member call, errors 1 pt
+Task 2 — lambdas: captures, names in the body, the rewrite into a struct, errors 1.5 pt
+Task 3 — at least 5 tests in tests/ok and 5 in tests/err 0.5 pt
+Additional task — mut captures, graded separately 1 pt
+Show the result to the teacher during the practice or by Friday 30 October, 23:59. ai_usage.txt is updated for this practice
+(tools, prompts, what you took as-is, what you changed, or “not used”); a missing or stub file is 0 for the practice. Code generation
+stays in llvmlite.ir (or llvm::IRBuilder): the only IR text is str(module); IR assembled from strings gets 0 for
+the task it appears in.
+TASK 1 — CALLABLE OBJECTS (1 POINT)
+A struct that declares a member function named call can be called like a function: triple(14) means
+triple.call(14). The longer form stays legal.
+struct Scale
+{
+ i32 k
+ fn call := (i32 v) -> i32
+ {
+ i32 r{v * k}
+ exit r
+ }
+}
+struct Counter
+{
+ i32 mut n
+ fn call := () -> i32
+ {
+ n := n + 1
+ exit n
+ }
+}
+struct Shape
+{
+ Scale scale
+ i32 side
+ fn grown := () -> i32
+ {
+ i32 g{scale(side)}
+ exit g
+ }
+}
+Scale triple{3}
+Counter mut c{0}
+Shape s{{2}, 5}
+print(triple(14))
+print(triple.call(14))
+print(s.scale(7))
+print(s.grown())
+i32 a{c()}
+i32 b{c()}
+print(c)
+i32 r{a * 10 + b}
+exit r
+Expected output:
+42
+42
+14
+10
+Counter{n: 2}
+Program exit with result 12
+scale is a field of Shape, so s.scale(7) is s.scale.call(7); inside grown, scale(side) calls the field of
+its own object. The call of Counter changes n, so it is a mutating member function and the mutation rule holds
+as for any other: with Counter c{0} the call c() is an error.
+The call rule. For a name followed by (:
+1. If the name is a variable visible here (a parameter, a local, a field inside a member function, a capture inside a
+lambda), its type must be a struct that declares call. The call is name.call(args).
+2. Otherwise the name is a function, found as before: a member function of the current struct, then a global
+function.
+3. Otherwise it is an unknown function.
+1
+If the name is both a visible variable and a function, the call is an error at the name: 'twice' is both a variable
+and a function: rename one of them. Declaring both is allowed; only a call twice(…) is refused. The same
+rule works after a dot: in obj.name(args), if name is a field of obj, the call is obj.name.call(args).
+The rewrite. The parser cannot tell a variable from a function: triple(14) is a Call in --ast. The semantic
+pass knows the names, so it makes the decision there and puts a member call in place of the call: the target triple,
+the member function call, the same arguments. That member call is checked by the code that already checks
+member calls (the arguments, the mutation rule), and code generation does not change. The IR of triple(14) and
+of triple.call(14) is the same line:
+%"call.ret" = call i32 @"Scale_call"(%"Scale"* %"triple", i32 14)
+Errors. Each one with line:column; the wording is yours:
+• a variable whose struct has no call: 'p' is not callable: Point has no member function 'call';
+a variable of a built-in type: 'n' is not callable: it is i32;
+• a name that is both a variable and a function, at the call;
+• a wrong number or type of arguments (the message names the object, not call);
+• a mutating call on a const object or through a const field: cannot call 'c': its 'call' changes it,
+and it is not mut.
+TASK 2 — LAMBDAS (1.5 POINTS)
+A lambda is a function declared where a statement stands. The list in brackets names the variables it takes with it,
+its captures:
+statement ::= decl | assign | if | while | print | lambda
+lambda ::= "fn" ident ":=" "[" [ ident { "," ident } ] "]"
+ "(" [ type ident { "," type ident } ] ")" "->" type NL block
+A lambda stands at the top level among the statements and inside any block: a function, a member function, if,
+while, another lambda. A line that starts with fn name := [ is a lambda; fn without [ inside a block stays an
+error, and so does a capture list on a member function.
+• A capture is a copy taken at the declaration. Changing the variable later does not change the lambda. A
+lambda declared inside a loop takes the current value on every iteration. Inside the body a capture is const.
+• The body sees its parameters, its locals, its captures and the global functions. Nothing else: not the toplevel variables, not the locals and parameters of the enclosing function, not the fields of the enclosing struct,
+unless they are captured. This is the same rule as for a function body, which does not see the top-level variables
+either. A lambda cannot call itself: its name is declared after its body. A lambda may capture another lambda.
+fn sq := (i32 v) -> i32
+{
+ i32 r{v * v}
+ exit r
+}
+fn sum_scaled := (i32 factor, i32 a, i32 b) -> i32
+{
+ fn times := [factor](i32 v) -> i32
+ {
+ i32 r{factor * sq(v)}
+ exit r
+ }
+ i32 s{times(a) + times(b)}
+ exit s
+}
+i32 mut k{10}
+fn add_k := [k](i32 y) -> i32
+{
+ i32 r{k + y}
+ exit r
+}
+k := 100
+print(add_k(5))
+print(k)
+print(sum_scaled(2, 3, 4))
+exit add_k(1)
+Expected output:
+15
+100
+50
+Program exit with result 11
+add_k keeps the 10 it took at its declaration; times captures the parameter factor and calls the global function sq.
+The rewrite. A lambda becomes three things the compiler already has:
+1. a struct with one field per capture, of the type of the captured variable. The struct has no name in the language;
+call it lambda.add_k in the compiler: a dot cannot appear in a name a program declares, so it never clashes2. its member function call with the parameters, the return type and the body of the lambda;
+3. a variable add_k of that struct, initialised at this point with the captured values, as lambda.add_k add_k{k}.
+After that, add_k(5) is a callable object from Task 1. Do the rewrite in the semantic pass: the types of the captures
+are known only there. --ast stays the parse tree; add the flag --ast-checked, which prints the tree after the
+semantic pass. A part of it for the program above:
+ Lambda add_k -> i32
+ Struct lambda.add_k
+ Member k i32 const
+ MemberFn call -> i32
+ Param y i32
+ Block
+ ...
+ Decl add_k lambda.add_k const
+ Var k
+ Assign k
+ Const 100
+ Print
+ CallableCall add_k
+ Const 5
+In the IR the struct is a type, call is a member function with the object as its first parameter, and the declaration
+is an alloca, a gep and a store per capture. A part of output.ll:
+%"lambda.add_k" = type {i32}
+define i32 @"lambda.add_k_call"(%"lambda.add_k"* %"this", i32 %"y")
+...
+ %"add_k" = alloca %"lambda.add_k"
+ ...
+ %"k.val" = load i32, i32* %"k"
+ %"add_k.0.ptr" = getelementptr inbounds %"lambda.add_k", %"lambda.add_k"* %"add_k", i32 0, i32 0
+ store i32 %"k.val", i32* %"add_k.0.ptr"
+ store i32 100, i32* %"k"
+ %"call.ret" = call i32 @"lambda.add_k_call"(%"lambda.add_k"* %"add_k", i32 5)
+k := 100 is a store into k; the copy inside add_k stays 10.
+The type has no name. So no parameter, return type, variable or field can have it. A lambda cannot be passed as
+an argument, cannot be the value of exit, cannot initialise a declared variable or a field, cannot be assigned, and
+cannot be printed. Its captures are not visible outside its body: add_k.k is an error.
+Errors. Each one with line:column; the wording is yours. The messages of the reference for the program above,
+with one change each:
+• an outer name used in the body without a capture ([] instead of [k]): line 19:11: 'k' is not captured
+by lambda 'add_k': add it to the capture list, [k];
+• an assignment to a capture (k := k + y in the body): line 19:5: cannot assign to 'k': the capture
+'k' is const, write [mut k];
+• a name captured twice ([k, k]): line 17:17: 'k' is captured twice;
+• a name in the capture list that is not visible ([factor, k] in sum_scaled): line 8:26: cannot capture
+'k': no variable 'k' is visible here;
+• a lambda passed as an argument (sq(times)): line 13:14: 'times' is a lambda and cannot be
+passed to 'sq': its type has no name, so no parameter can have it;
+• a lambda as the value of exit, in a declaration of a named type, in an assignment, in print; a parameter named
+like a capture; a lambda calling itself.
+TASK 3 — TESTS (0.5 POINTS)
+At least 5 programs in each folder, covering both tasks:
+• tests/ok: a struct with call called both ways, a callable field, a lambda with no captures that calls a global
+function, a capture changed after the declaration, a lambda inside a function capturing a parameter, a lambda
+inside a loop, a lambda capturing another lambda;
+3
+• tests/err: a struct without call, a call on an i32, a name that is both a variable and a function, a missing
+capture, an assignment to a capture, a duplicate capture, an unknown name in the capture list, a lambda passed
+as an argument, a lambda as the value of exit.
+A program that reads input keeps it next to itself in NAME.in; your test script passes this file as the standard input.
+The script compares the whole standard output: the lines of print and the exit line. Programs from the earlier
+practices still compile and print the same results.
+ADDITIONAL TASK — MUT CAPTURES (+1)
+[mut n] gives the lambda its own mutable copy of n: the field of the struct is mut. A call that assigns a mut
+capture is a mutating member function, so the mutation rule decides where it may be called. The closure variable
+is mut when one of its captures is mut, so a call like next() works at the place of the declaration. A capture of
+another lambda is const unless it is written [mut next]. The original variable never changes, and a mut capture
+of a const variable is allowed: it is a copy.
+i32 n{0}
+fn next := [mut n]() -> i32
+{
+ n := n + 1
+ exit n
+}
+print(next())
+print(next())
+fn twice := [mut next]() -> i32
+{
+ i32 a{next()}
+ i32 b{next()}
+ i32 r{a * 10 + b}
+ exit r
+}
+print(twice())
+print(next())
+exit n
+Expected output:
+1
+2
+34
+3
+Program exit with result 0
+twice takes a copy of next whose counter is 2 and counts on that copy; the original next goes on from 2; n is
+still 0. With [next] instead of [mut next] the copy is const, and the call inside twice is an error: line 11:11:
+cannot call 'next': its 'call' changes it, and it is not mut. Add tests: a counter, a mut capture
+changed in a loop, two lambdas with their own copies of one variable, a const and a mut capture in one list, and
+the error above.
+SUBMISSION
+Push the compiler, tests/ and ai_usage.txt to the branch practice-8 and open a pull request into main with
+vovaskochko as a reviewer. During the practice, or by Friday 30 October, 23:59, show the teacher:
+• the programs of Task 1 and Task 2 run through lli, with the output shown above;
+• --ast-checked for the Task 2 program, and in output.ll the struct lambda.add_k and its function
+lambda.add_k_call;
+• two rejected programs with line:column: a missing capture and a lambda passed as an argument.
+----- END USER PROMPT -----

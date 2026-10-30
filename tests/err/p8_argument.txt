@@ -1,0 +1,12 @@
+fn sq := (i32 v) -> i32
+{
+ i32 r{v * v}
+ exit r
+}
+i32 mut k{10}
+fn add := [k](i32 y) -> i32
+{
+ i32 r{k + y}
+ exit r
+}
+exit sq(add)

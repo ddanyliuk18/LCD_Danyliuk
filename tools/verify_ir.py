@@ -6,13 +6,16 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.compiler import Parser, SemanticChecker, CodeGen, CompileError, lex, main
+from src.compiler import Parser, SemanticChecker, CodeGen, CompileError, lex, main, check_with_parse_tree
 import llvmlite.binding as llvm
 
 
 def compile_source(data):
     tree = Parser(lex(data)).parse_program()
-    SemanticChecker().visit(tree)
+    parsed = check_with_parse_tree(tree)
+    stream = io.StringIO()
+    with contextlib.redirect_stdout(stream):
+        parsed.dump()
     module = CodeGen().visit(tree)
     text = str(module)
     checked = llvm.parse_assembly(text)
@@ -22,9 +25,6 @@ def compile_source(data):
             for instruction in block.instructions:
                 if instruction.opcode == 'alloca':
                     assert block.name == 'entry', (function.name, block.name)
-    stream = io.StringIO()
-    with contextlib.redirect_stdout(stream):
-        tree.dump()
     return text, stream.getvalue()
 
 

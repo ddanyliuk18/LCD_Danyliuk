@@ -1,0 +1,28 @@
+Program
+  Struct Scale
+    Field k i32 const
+    MemberFn call -> i32
+      Field v i32 const
+      Block
+        Decl r i32 const
+          BinOp *
+            Var v
+            Var k
+        Exit
+          Var r
+  Decl original Scale mut
+    Init Scale
+      Const 2
+  Lambda get -> i32
+    Capture original const
+    Field n i32 const
+    Block
+      Exit
+        Call original
+          Var n
+  Print
+    Call get
+      Const 3
+  Exit
+    Call get
+      Const 4

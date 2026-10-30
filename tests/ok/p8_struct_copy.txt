@@ -1,0 +1,16 @@
+struct Scale
+{
+ i32 k
+ fn call := (i32 v) -> i32
+ {
+  i32 r{v * k}
+  exit r
+ }
+}
+Scale mut original{2}
+fn get := [original](i32 n) -> i32
+{
+ exit original(n)
+}
+print(get(3))
+exit get(4)

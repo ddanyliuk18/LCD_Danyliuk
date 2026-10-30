@@ -1,0 +1,27 @@
+Program
+  Decl i i32 mut
+    Const 0
+  While
+    BinOp !=
+      Var i
+      Const 3
+    Block
+      Lambda get -> i32
+        Struct lambda.get
+          Field i i32 const
+          MemberFn call -> i32
+            Block
+              Exit
+                Var i
+        Decl get lambda.get const
+          Init lambda.get
+            Var i
+      Assign i
+        BinOp +
+          Var i
+          Const 1
+      Print
+        CallableCall get
+          Var get
+  Exit
+    Var i

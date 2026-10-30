@@ -1,0 +1,19 @@
+Program
+  Decl n i32 const
+    Call read
+  Lambda get -> i32
+    Struct lambda.get
+      Field n i32 const
+      MemberFn call -> i32
+        Block
+          Exit
+            Var n
+    Decl get lambda.get const
+      Init lambda.get
+        Var n
+  Print
+    CallableCall get
+      Var get
+  Exit
+    CallableCall get
+      Var get

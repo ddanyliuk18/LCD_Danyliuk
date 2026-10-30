@@ -1,0 +1,24 @@
+Program
+  Struct Box
+    Field x i32 const
+    MemberFn run -> i32
+      Block
+        Lambda read_x -> i32
+          Struct lambda.read_x
+            Field x i32 const
+            MemberFn call -> i32
+              Block
+                Exit
+                  Var x
+          Decl read_x lambda.read_x const
+            Init lambda.read_x
+              Var x
+        Exit
+          CallableCall read_x
+            Var read_x
+  Decl b Box const
+    Init Box
+      Const 17
+  Exit
+    MemberCall run
+      Var b

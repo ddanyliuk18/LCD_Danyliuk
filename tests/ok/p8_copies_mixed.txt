@@ -1,0 +1,17 @@
+i32 n{5}
+i32 step{2}
+fn first := [mut n, step]() -> i32
+{
+ n := n + step
+ exit n
+}
+fn second := [mut n]() -> i32
+{
+ n := n + 1
+ exit n
+}
+print(first())
+print(first())
+print(second())
+print(n)
+exit second()

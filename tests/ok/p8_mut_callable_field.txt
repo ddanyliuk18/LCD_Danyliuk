@@ -1,0 +1,21 @@
+struct Counter
+{
+ i32 mut n
+ fn call := () -> i32
+ {
+  n := n + 1
+  exit n
+ }
+}
+struct Holder
+{
+ Counter mut counter
+ fn call := () -> i32
+ {
+  exit counter()
+ }
+}
+Holder mut h{{0}}
+print(h.counter())
+print(h())
+exit h.counter.call()
