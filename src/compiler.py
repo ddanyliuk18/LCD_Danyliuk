@@ -1815,6 +1815,8 @@ class SemanticChecker(CoreSemanticChecker):
                 return
         if isinstance(node.target, VarNode):
             super().visit_assign(node)
+            node.target.decl = node.decl
+            node.target.type = node.decl.type_name
             if not self.all_mut(node.decl.type_name):
                 self.fail(node, 'whole-object assignment requires every field at every depth to be mut')
             return
@@ -2081,8 +2083,11 @@ class CodeGen(CoreCodeGen):
             super().visit_exit(node)
 
 
-def compile_tree(tree):
+def compile_tree(tree, optimize=False):
     SemanticChecker().visit(tree)
+    if optimize:
+        from .optimization import remove_unused
+        remove_unused(tree)
     return CodeGen().visit(tree)
 
 
@@ -2110,34 +2115,35 @@ def check_with_parse_tree(tree):
 # ============================================================
 
 def main():
+    args = sys.argv[1:]
+    optimize = '--remove-unused' in args
+    args = [arg for arg in args if arg != '--remove-unused']
+    modes = [arg for arg in args if arg in ('--tokens', '--ast', '--ast-checked')]
+    paths = [arg for arg in args if not arg.startswith('--')]
     dump_mode = (
-        len(sys.argv) == 3
-        and sys.argv[1] in ("--tokens", "--ast", "--ast-checked")
+        len(modes) == 1 and len(paths) == 1 and len(args) == 2
     )
 
     if (
-        len(sys.argv) != 3
-        or (
-            sys.argv[1].startswith("--")
-            and not dump_mode
-        )
+        not dump_mode and not (len(args) == 2 and len(paths) == 2)
     ):
         print(
             "usage:\n"
             "  python3 compiler.py input.txt output.ll\n"
             "  python3 compiler.py --tokens input.txt\n"
             "  python3 compiler.py --ast input.txt\n"
-            "  python3 compiler.py --ast-checked input.txt",
+            "  python3 compiler.py --ast-checked input.txt\n"
+            "  --remove-unused may appear anywhere (also with --ast-checked)",
             file=sys.stderr,
         )
         return 1
 
     if dump_mode:
-        source_path = sys.argv[2]
+        source_path = paths[0]
         output_path = None
     else:
-        source_path = sys.argv[1]
-        output_path = sys.argv[2]
+        source_path, output_path = paths
+    mode = modes[0] if modes else None
 
     # On error no old output file should survive.
     if output_path is not None and os.path.exists(output_path):
@@ -2151,17 +2157,20 @@ def main():
 
         token_lines = lex(data)
 
-        if sys.argv[1] == "--tokens":
+        if mode == "--tokens":
             print_tokens(token_lines)
             return 0
 
         tree = Parser(token_lines).parse_program()
         parse_tree = check_with_parse_tree(tree)
 
-        if sys.argv[1] == "--ast":
+        if mode == "--ast":
             parse_tree.dump()
             return 0
-        if sys.argv[1] == '--ast-checked':
+        if optimize:
+            from .optimization import remove_unused
+            remove_unused(tree)
+        if mode == '--ast-checked':
             tree.dump()
             return 0
 
