@@ -3,6 +3,13 @@
 set -u
 shopt -s nullglob
 cd "$(dirname "$0")"
+optimize_flags=()
+if [[ "${1:-}" == --remove-unused || "${REMOVE_UNUSED:-0}" == 1 ]]; then
+    optimize_flags=(--remove-unused)
+elif [[ $# -ne 0 ]]; then
+    echo 'usage: bash run_tests.sh [--remove-unused] (or REMOVE_UNUSED=1)' >&2
+    exit 1
+fi
 for tool in python3 lli opt; do
     command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
 done
@@ -23,22 +30,22 @@ check_ok() {
     if [[ -f "${base}.in" ]]; then stdin="${base}.in"; fi
     rm -f output.ll actual.out actual.err actual.ast
 
-    if ! python3 compiler.py "$input" output.ll >actual.out 2>actual.err; then
+    if ! python3 compiler.py "${optimize_flags[@]}" "$input" output.ll >actual.out 2>actual.err; then
         echo "${input} FAIL (compiler rejected it)"
         cat actual.err
         failed=$((failed + 1))
-    elif ! python3 compiler.py --ast "$input" >actual.ast 2>actual.err; then
+    elif ! python3 compiler.py "${optimize_flags[@]}" --ast "$input" >actual.ast 2>actual.err; then
         echo "${input} FAIL (AST mode rejected it)"
         cat actual.err
         failed=$((failed + 1))
     elif ! diff -u "$expected_ast" actual.ast; then
         echo "${input} FAIL (AST differs)"
         failed=$((failed + 1))
-    elif [[ -f "${base}.checked" ]] && ! python3 compiler.py --ast-checked "$input" >actual.ast 2>actual.err; then
+    elif [[ -f "${base}.checked" ]] && ! python3 compiler.py "${optimize_flags[@]}" --ast-checked "$input" >actual.ast 2>actual.err; then
         echo "${input} FAIL (checked AST rejected it)"
         cat actual.err
         failed=$((failed + 1))
-    elif [[ -f "${base}.checked" ]] && ! diff -u "${base}.checked" actual.ast; then
+    elif [[ ${#optimize_flags[@]} -eq 0 && -f "${base}.checked" ]] && ! diff -u "${base}.checked" actual.ast; then
         echo "${input} FAIL (checked AST differs)"
         failed=$((failed + 1))
     elif ! lli output.ll <"$stdin" >actual.out 2>actual.err; then
@@ -64,7 +71,7 @@ check_err() {
     fi
     rm -f output.ll actual.err
 
-    if python3 compiler.py "$input" output.ll >/dev/null 2>actual.err; then
+    if python3 compiler.py "${optimize_flags[@]}" "$input" output.ll >/dev/null 2>actual.err; then
         echo "${input} FAIL (compiler accepted it)"
         failed=$((failed + 1))
     elif [ -f output.ll ]; then
@@ -85,11 +92,11 @@ check_crlf() {
     rm -f crlf_input.txt output.ll actual.ast actual.err
     awk '{printf "%s\r\n", $0}' "$input" >crlf_input.txt
 
-    if ! python3 compiler.py crlf_input.txt output.ll >/dev/null 2>actual.err; then
+    if ! python3 compiler.py "${optimize_flags[@]}" crlf_input.txt output.ll >/dev/null 2>actual.err; then
         echo "CRLF input FAIL (compiler rejected Windows line endings)"
         cat actual.err
         failed=$((failed + 1))
-    elif ! python3 compiler.py --ast crlf_input.txt >actual.ast 2>actual.err; then
+    elif ! python3 compiler.py "${optimize_flags[@]}" --ast crlf_input.txt >actual.ast 2>actual.err; then
         echo "CRLF input FAIL (AST mode rejected Windows line endings)"
         cat actual.err
         failed=$((failed + 1))
@@ -115,6 +122,13 @@ done
 
 echo
 echo "=== REGRESSIONS ==="
+if python3 tools/verify_practice9.py; then
+    echo 'Practice 9 differential optimization and memory checks PASS'
+    passed=$((passed + 1))
+else
+    echo 'Practice 9 differential optimization and memory checks FAIL'
+    failed=$((failed + 1))
+fi
 check_crlf
 if python3 tools/verify_ir.py && python3 tools/verify_practice8.py && opt -passes=mem2reg -S phi-check.ll -o phi-promoted.ll && grep -q 'phi i32' phi-promoted.ll; then
     echo "LLVM structure and mem2reg PASS"
