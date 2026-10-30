@@ -1,0 +1,8 @@
+fn consume := () -> i32
+{
+ exit read()
+}
+i32 ignored{consume()}
+i32 later{read()}
+print(later)
+exit 0

@@ -320,6 +320,40 @@ i32 next{read()}
 print(next)
 exit 0
 '''), '8\nProgram exit with result 0\n', ['Decl unused', 'Call read'], []),
+ 'read_function': (clean('''
+fn consume := () -> i32
+{
+ exit read()
+}
+i32 ignored{consume()}
+i32 later{read()}
+print(later)
+exit 0
+'''), '6\nProgram exit with result 0\n', ['Function consume', 'Decl ignored'], []),
+ 'lambda_declaration_quiet': (clean('''
+fn make := () -> i32
+{
+ fn stored := []() -> i32
+ {
+  print(9)
+  exit 9
+ }
+ exit 1
+}
+i32 unused{make()}
+exit 0
+'''), 'Program exit with result 0\n', ['Exit'], ['Function make', 'Lambda stored', 'Decl unused']),
+ 'mut_capture_effect': (clean('''
+i32 n{0}
+fn next := [mut n]() -> i32
+{
+ n := n + 1
+ exit n
+}
+i32 unused{next()}
+print(next())
+exit n
+'''), '2\nProgram exit with result 0\n', ['Lambda next', 'Decl unused'], []),
 }
 
 rounds = {
@@ -332,6 +366,7 @@ rounds = {
 inputs = {
  'field_assignment_effect': '17\n', 'read_initializer': '11 22\n',
  'nested_argument_effect': '7 9\n', 'nested_initializers': '5 8\n',
+ 'read_function': '4 6\n',
 }
 Path('tests/opt').mkdir(exist_ok=True)
 for name, (source, expected, present, absent) in cases.items():

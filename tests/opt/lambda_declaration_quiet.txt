@@ -1,0 +1,11 @@
+fn make := () -> i32
+{
+ fn stored := []() -> i32
+ {
+  print(9)
+  exit 9
+ }
+ exit 1
+}
+i32 unused{make()}
+exit 0

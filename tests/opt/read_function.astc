@@ -1,0 +1,13 @@
+Program
+  Function consume -> i32
+    Block
+      Exit
+        Call read
+  Decl ignored i32 const
+    Call consume
+  Decl later i32 const
+    Call read
+  Print
+    Var later
+  Exit
+    Const 0
