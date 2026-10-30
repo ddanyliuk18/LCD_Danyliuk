@@ -1,0 +1,35 @@
+Program
+  Struct Cell
+    Field x i32 mut
+    MemberFn a -> i32
+      Field n i32 const
+      Block
+        If
+          BinOp ==
+            Var n
+            Const 0
+          Block
+            Exit
+              Var x
+        Exit
+          Call b
+            BinOp -
+              Var n
+              Const 1
+    MemberFn b -> i32
+      Field n i32 const
+      Block
+        Assign x
+          BinOp +
+            Var x
+            Const 1
+        Exit
+          Call a
+            Var n
+  Decl c Cell mut
+    Init Cell
+      Const 1
+  Exit
+    MemberCall a
+      Var c
+      Const 3

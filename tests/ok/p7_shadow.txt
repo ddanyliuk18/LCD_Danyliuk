@@ -1,0 +1,19 @@
+struct S
+{
+ i32 x
+ fn f := (i32 x) -> i32
+ {
+  i32 mut y{x}
+  y := y + 1
+  exit y
+ }
+ fn g := () -> i32
+ {
+  i32 mut x{8}
+  x := x + 1
+  exit x
+ }
+}
+S s{1}
+i32 r{s.f(4) + s.g()}
+exit r

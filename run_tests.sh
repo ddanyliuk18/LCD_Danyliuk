@@ -19,6 +19,8 @@ check_ok() {
         expected="${base}.out"
     fi
     expected_ast="${base}.ast"
+    stdin=/dev/null
+    if [[ -f "${base}.in" ]]; then stdin="${base}.in"; fi
     rm -f output.ll actual.out actual.err actual.ast
 
     if ! python3 compiler.py "$input" output.ll >actual.out 2>actual.err; then
@@ -32,7 +34,7 @@ check_ok() {
     elif ! diff -u "$expected_ast" actual.ast; then
         echo "${input} FAIL (AST differs)"
         failed=$((failed + 1))
-    elif ! lli output.ll >actual.out 2>actual.err; then
+    elif ! lli output.ll <"$stdin" >actual.out 2>actual.err; then
         echo "${input} FAIL (lli rejected the IR)"
         cat actual.err
         failed=$((failed + 1))

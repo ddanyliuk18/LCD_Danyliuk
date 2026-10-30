@@ -50,6 +50,21 @@ for required in ('%"Point" = type {i32, i32}', 'getelementptr', 'define i32 @"us
     assert required in text, required
 text, _ = compile_source(Path('tests/ok/p6_additional.txt').read_bytes())
 assert 'insertvalue' in text
+text, _ = compile_source(Path('tests/ok/p7_task1.txt').read_bytes())
+checked = llvm.parse_assembly(text)
+shift = checked.get_function('Point_shift')
+assert len(list(shift.arguments)) == 2
+assert list(shift.arguments)[0].type.is_pointer
+opcodes = [i.opcode for b in shift.blocks for i in b.instructions]
+for opcode in ('getelementptr', 'load', 'add', 'store'):
+    assert opcode in opcodes, opcode
+assert text.count('declare i32 @"printf"') == 1
+text, _ = compile_source(Path('tests/ok/p7_task3.txt').read_bytes())
+assert text.count('declare i32 @"scanf"') == 1
+assert 'call i32 (i8*, ...) @"scanf"' in text
+assert '%d' in text and '%lld' in text and '%s' in text
+text, _ = compile_source(Path('tests/ok/p7_bonus.txt').read_bytes())
+assert 'extractvalue' in text and 'temporary' in text
 text, _ = compile_source(Path('tests/ok/phi_both_arms.txt').read_bytes())
 Path('phi-check.ll').write_text(text)
 original_argv = sys.argv

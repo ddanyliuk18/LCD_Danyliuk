@@ -1,72 +1,54 @@
-AI Usage — Practice 6
+AI Usage — Practice 7
 
-Tool: OpenAI Codex, with shell, file editing, Python, llvmlite, LLVM, coverage,
-Git and GitHub CLI. No additional AI agents were used.
+Tool: OpenAI Codex, shell/PowerShell, file editing, Python 3.12, llvmlite 0.50,
+LLVM 18 lli/opt, coverage, Git and GitHub CLI. No additional AI agents used.
 
-Prompt supplied:
-The user provided the teacher's accepted Practice 5 review, including the
-remaining blank-line problem before an if brace and between a block and else.
-The user requested a careful Practice 6 implementation, regression protection,
-tests, meaningful commits, and the additional nested initialisation task.
-The complete structs/functions assignment and submission instructions were
-included: src/, tests/, ai_usage.txt, practice-6 branch, PR into main and
-vovaskochko as reviewer. No numeric minimum number of commits was present
-in the supplied assignment; work was separated into focused commits.
+Prompt: The user asked in Ukrainian to review Practice 6 and implement a logical,
+complete Practice 7 continuation with thorough tests, meaningful ordered commits
+and bonus work. The supplied assignment specified member declarations/calls,
+local/field/member/global lookup, fixed-point mutation analysis, by-address
+receivers, read/print, exact stdout with .in files, temporary call-result chains,
+ai_usage.txt, branch practice-7, PR into main and reviewer vovaskochko.
+No numeric commit minimum or prescribed commit-by-commit sequence was supplied.
 
-AI work taken into the project:
-- reviewed the earlier compiler, fixtures, branch and commit history;
-- fixed blank-line handling around control-flow braces and else, with a
-  regression fixture and separate commit;
-- moved the implementation to src/ and preserved the root compiler.py CLI;
-- extended the byte lexer with struct/fn, punctuation and the result arrow;
-- added AST nodes and parsing for structs, signatures, calls, field chains,
-  multiple initializer values and recursively nested braces;
-- enforced structs/functions/statements/exit ordering and top-level-only
-  struct/function declarations;
-- collected signatures before function body checking and generation;
-- checked prior struct types, nonempty layouts, duplicate names/fields/
-  parameters, function-local visibility and immutable parameter copies;
-- checked argument arity/types and widening, exact function return types,
-  initializer arity/types/copies and built-in top-level exit types;
-- checked every mut link of field writes and recursive field mutability
-  before whole-object replacement;
-- attached numeric field indices and declaration/function links to the AST;
-- generated named LLVM types, GEP, value copies, insertvalue, functions,
-  calls, parameter entry slots and ret using llvmlite.ir exclusively;
-- added independently specified runtime results for 16 new valid programs,
-  30 invalid programs, AST snapshots and exact diagnostic expectations;
-- added module/entry-allocation checks, repeated compilation, LF/CRLF checks,
-  CLI stale-output cleanup checks and a mem2reg phi assertion;
-- created a demonstration script for the four supplied examples, required
-  IR constructs and three rejected programs;
-- prepared grammar, README, requirements, verification record and PR text.
+AI work accepted into the project:
+- reviewed Practice 6 parser, semantic checker, llvmlite generator and tests;
+- implemented explicit MemberFn and MemberCall nodes and AST dumps;
+- added struct method ordering and uniqueness checks, signature collection,
+  field fallback, member-first call resolution and top-level variable isolation;
+- implemented receiver pointers, implicit field GEP access and object mutation;
+- recorded direct mutations and dependencies and propagated them to a fixed
+  point, including cyclic calls, then checked mutable receiver paths;
+- implemented reserved read/print names, byte string scanning, scanf input,
+  primitive/bool/string/recursive struct output and one shared printf declaration;
+- implemented chained struct call results using extractvalue and entry slots,
+  permitted mutations of temporary copies and rejected assignment to them;
+- added 16 valid and 32 invalid fixtures, input files, AST/error snapshots,
+  hand-calculated stdout expectations, runner stdin support, LLVM assertions,
+  a teacher demo, grammar and documentation;
+- prepared focused commits and the submission PR.
 
-Taken as-is versus changed during review:
-AI assistance covered most implementation, test and documentation code.
-The earlier compiler behavior and existing fixtures were retained. New runtime
-expectations were written from the assignment/manual calculations, not copied
-from the generated compiler's output. AST/error snapshots were initially
-recorded by authoring scripts and reviewed against source locations and rules;
-the test runner never regenerates expectations.
-After checks, the implementation was revised to preserve the old assignment
-and else diagnostics, use a fresh LLVM type context per compilation, expose
-complete assignment field paths in the AST, remove superseded base methods,
-and check parameters and outermost locals in the same scope.
-Three AST snapshots were corrected after field paths became visible.
-The first complete runner reported 93 passed and one structural-check failure
-because a newly changed AST snapshot was still outdated. That snapshot was
-corrected and the final checks rerun. WSL dependency caching was also moved
-from /tmp to /var/tmp after a WSL restart cleared /tmp.
+Taken as-is versus changed:
+AI assistance supplied most Practice 7 code and fixtures. Practice 6 implementation
+and old fixtures were retained. Runtime expectations were specified from the
+assignment and manual calculations before execution. AST/error snapshots were
+recorded by an explicit authoring helper, then checked against rules and source
+locations; tests never regenerate expectations.
+Review changed initial class reassignment to explicit MemberFn construction,
+disambiguated A_b.c versus A.b_c LLVM names, restored the old standalone-global-
+call diagnostic, and retained GEP reads of ordinary object fields while using
+extractvalue for fields of call results.
+An initial pair of overlapping shell test runs shared temporary files and caused
+spurious stdout/AST mismatches. The final full runner was run alone. The real
+standalone-call diagnostic regression and missing old GEP assertion were fixed
+before final verification. WSL and Git/GitHub operations required sandbox
+escalation; no credentials were written into repository files.
 
-Verification:
-Python 3.12, llvmlite 0.50.0, LLVM 18 and coverage 7.16.2 on Ubuntu WSL.
-LLVM binding parse_assembly and verify were used only for validation, never
-to construct IR. Runtime execution used lli. All IR construction uses
-llvmlite.ir and the only IR serialization is str(module).
-The demo printed true, 55, 28 and 36, and displayed Point, GEPs, definitions
-and calls. Rejections included unknown_field (7:8), const_link (13:3) and
-return_type (3:2). Final suite and coverage results are recorded in
-docs/verification.md; Git commits and the pull request retain the work history.
+All IR construction remains in llvmlite.ir. Binding parse_assembly is validation
+only, never an IR construction path. Final test/coverage/demo evidence is in
+docs/verification.md. The student must personally demonstrate the result to the
+teacher; AI cannot perform that presentation.
 
-The student still needs to show the result to the teacher during practice or
-within the stated three-day window. AI did not conduct that presentation.
+The first demo attempt exposed a trailing CR in the last shell-script line
+created on Windows. The script was normalized to LF; the complete demo then
+finished with results 83, 2 (after the required print output), and 46.

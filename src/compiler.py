@@ -145,6 +145,16 @@ def lex(data: bytes):
                 # so set it to 0 here.
                 col = 0
 
+            elif b == ord('"'):
+                closing = i + 1
+                while closing < len(data) and data[closing] not in (10, 13, 34):
+                    closing += 1
+                if closing == len(data) or data[closing] != 34:
+                    error_at(line, col, 'string literal is not closed on its line')
+                tokens.append(Token('string', data[i + 1:closing].decode('latin1'), line, col))
+                col += closing - i
+                i = closing
+
             # identifier / keyword begins
             elif is_alpha(b):
                 state = "IDENT"
@@ -1166,12 +1176,13 @@ class StructNode(Node):
     def __init__(self, token, fields):
         super().__init__(token.line, token.col)
         self.name, self.fields = token.text, fields
+        self.methods = []
 
     def label(self):
         return f"Struct {self.name}"
 
     def children(self):
-        return self.fields
+        return self.fields + self.methods
 
 
 class FieldDeclNode(DeclNode):
@@ -1204,6 +1215,44 @@ class CallNode(ExprNode):
 
     def children(self):
         return self.args
+
+
+class MemberFnNode(FunctionNode):
+    def label(self):
+        return f'MemberFn {self.name} -> {self.result}'
+
+
+class MemberCallNode(CallNode):
+    def __init__(self, base, token, args):
+        super().__init__(token, args)
+        self.base = base
+
+    def label(self):
+        return f'MemberCall {self.name}'
+
+    def children(self):
+        return [self.base] + self.args
+
+
+class StringNode(ExprNode):
+    def __init__(self, token):
+        super().__init__(token.line, token.col)
+        self.value = token.text
+
+    def label(self):
+        return f'String {self.value!r}'
+
+
+class PrintNode(StmtNode):
+    def __init__(self, token, value):
+        super().__init__(token.line, token.col)
+        self.value = value
+
+    def label(self):
+        return 'Print'
+
+    def children(self):
+        return [self.value]
 
 
 class FieldNode(ExprNode):
@@ -1250,14 +1299,24 @@ class Parser(CoreParser):
             self.fail("expected '{' after struct")
         opening = self.expect_text('{')
         self.finish_line()
-        fields = []
+        fields, methods = [], []
         while self.next_nonempty_line():
             if self.peek().text == '}':
                 self.eat()
                 self.finish_line()
                 if not fields:
                     error_at(opening.line, opening.col, 'a struct must have at least one field')
-                return StructNode(name, fields)
+                node = StructNode(name, fields)
+                node.methods = methods
+                return node
+            if self.peek().text == 'fn':
+                if not fields:
+                    self.fail('member function must follow at least one field')
+                method = self.parse_function(MemberFnNode)
+                methods.append(method)
+                continue
+            if methods:
+                self.fail('field must precede member functions')
             typ = self.parse_type()
             mutable = self.peek() is not None and self.peek().text == 'mut'
             if mutable:
@@ -1267,7 +1326,7 @@ class Parser(CoreParser):
             self.finish_line()
         error_at(opening.line, opening.col, "'{' is never closed")
 
-    def parse_function(self):
+    def parse_function(self, node_class=FunctionNode):
         self.eat()
         name = self.expect_kind('identifier', 'a function name')
         self.expect_text(':=')
@@ -1288,7 +1347,7 @@ class Parser(CoreParser):
         body = self.block_after('fn')
         if body.exit is None:
             error_at(name.line, name.col, 'function body must end with exit')
-        return FunctionNode(name, params, result, body)
+        return node_class(name, params, result, body)
 
     def parse_program(self):
         structs, functions, statements = [], [], []
@@ -1324,6 +1383,15 @@ class Parser(CoreParser):
 
     def parse_statement(self):
         token = self.peek()
+        if token.text == 'print':
+            self.eat()
+            self.expect_text('(')
+            if self.peek() and self.peek().kind == 'string':
+                value = StringNode(self.eat())
+            else:
+                value = self.parse_expr()
+            self.expect_text(')')
+            return PrintNode(token, value)
         if token.text in ('struct', 'fn'):
             self.fail('structs and functions are allowed only at top level', token)
         if token.kind == 'identifier' and self.pos + 1 < len(self.toks):
@@ -1360,13 +1428,35 @@ class Parser(CoreParser):
 
     def parse_chain(self, token):
         node = VarNode(token.line, token.col, token.text)
+        if self.peek() is not None and self.peek().text == '(':
+            node = CallNode(token, self.parse_args())
         while self.peek() is not None and self.peek().text == '.':
-            self.eat()
-            node = FieldNode(node, self.expect_kind('identifier', 'a field name'))
+            dot = self.eat()
+            name = self.expect_kind('identifier', 'a field name')
+            if self.peek() is not None and self.peek().text == '(':
+                node = MemberCallNode(node, name, self.parse_args())
+            else:
+                node = FieldNode(node, name)
+            node.dot = dot
         return node
+
+    def parse_args(self):
+        self.expect_text('(')
+        args = []
+        if self.peek() is None or self.peek().text != ')':
+            while True:
+                args.append(self.parse_expr())
+                if self.peek() is None or self.peek().text != ',':
+                    break
+                self.eat()
+        self.expect_text(')')
+        return args
 
     def parse_assign(self):
         name = self.expect_kind('identifier', 'a variable name')
+        if self.peek() is not None and self.peek().text == '(':
+            # Global call statements were already rejected in Practice 6.
+            self.fail(f"expected ':=' after '{name.text}', got '('")
         target = self.parse_chain(name)
         token = self.peek()
         if token is None:
@@ -1382,17 +1472,6 @@ class Parser(CoreParser):
         token = self.peek()
         if token is not None and token.kind == 'identifier':
             self.eat()
-            if self.peek() is not None and self.peek().text == '(':
-                self.eat()
-                args = []
-                if self.peek() is None or self.peek().text != ')':
-                    while True:
-                        args.append(self.parse_expr())
-                        if self.peek() is None or self.peek().text != ',':
-                            break
-                        self.eat()
-                self.expect_text(')')
-                return CallNode(token, args)
             return self.parse_chain(token)
         return super().parse_factor()
 
@@ -1402,6 +1481,22 @@ class SemanticChecker(CoreSemanticChecker):
         super().__init__()
         self.structs, self.functions = {}, {}
         self.result = None
+        self.owner = self.current = None
+        self.pending_calls = []
+
+    def reserved(self, node):
+        if node.name in ('read', 'print'):
+            self.fail(node, f"name '{node.name}' is reserved")
+
+    def resolve(self, node, name):
+        for frame in reversed(self.scopes):
+            if name in frame:
+                return frame[name]
+        if self.owner:
+            for field in self.owner.fields:
+                if field.name == name:
+                    return field
+        return super().resolve(node, name)
 
     def require_type(self, typ, node):
         if typ not in LLVM_TYPES and typ not in self.structs:
@@ -1410,26 +1505,45 @@ class SemanticChecker(CoreSemanticChecker):
     def visit_program(self, node):
         for item in node.statements:
             if isinstance(item, StructNode):
+                self.reserved(item)
                 if item.name in self.structs:
                     self.fail(item, f"struct '{item.name}' is already declared")
                 names = set()
                 for field in item.fields:
+                    self.reserved(field)
                     self.require_type(field.type_name, field)
                     if field.name in names:
                         self.fail(field, f"duplicate field '{field.name}'")
                     names.add(field.name)
                 self.structs[item.name] = item
+                item.method_table = {}
+                for method in item.methods:
+                    self.reserved(method)
+                    if method.name in names:
+                        self.fail(method, f"duplicate member '{method.name}'")
+                    names.add(method.name)
+                    method.owner = item
+                    method.mutating = False
+                    method.dependencies = set()
+                    item.method_table[method.name] = method
             elif isinstance(item, FunctionNode):
+                self.reserved(item)
                 if item.name in self.functions:
                     self.fail(item, f"function '{item.name}' is already declared")
                 self.require_type(item.result, item)
                 for param in item.params:
                     self.require_type(param.type_name, param)
                 self.functions[item.name] = item
-        for function in self.functions.values():
+        methods = [m for s in self.structs.values() for m in s.methods]
+        for function in list(self.functions.values()) + methods:
+            self.owner = getattr(function, 'owner', None)
+            self.current = function
+            self.require_type(function.result, function)
             self.scopes = [{}]
             self.result = function.result
             for param in function.params:
+                self.reserved(param)
+                self.require_type(param.type_name, param)
                 if param.name in self.scopes[0]:
                     self.fail(param, f"duplicate parameter '{param.name}'")
                 self.scopes[0][param.name] = param
@@ -1438,10 +1552,51 @@ class SemanticChecker(CoreSemanticChecker):
                 self.visit(statement)
             self.visit(function.body.exit)
         self.scopes, self.result = [{}], None
+        self.owner = self.current = None
         for item in node.statements:
             if not isinstance(item, (StructNode, FunctionNode)):
                 self.visit(item)
         self.visit(node.exit)
+        changed = True
+        while changed:
+            changed = False
+            for method in methods:
+                if not method.mutating and any(m.mutating for m in method.dependencies):
+                    method.mutating = changed = True
+        for call in self.pending_calls:
+            if call.function.mutating:
+                self.check_mutable(call.base)
+
+    def rooted_in_self(self, node):
+        while isinstance(node, FieldNode):
+            node = node.base
+        return isinstance(node, VarNode) and getattr(node, 'implicit_field', False)
+
+    def check_mutable(self, node):
+        if isinstance(node, CallNode):
+            return  # A call owns a fresh temporary, including its field paths.
+        if isinstance(node, FieldNode):
+            root = node
+            while isinstance(root, FieldNode):
+                root = root.base
+            if isinstance(root, CallNode):
+                return
+            if not node.field.mutable:
+                self.fail(node, f"cannot write through const field '{node.name}'")
+            self.check_mutable(node.base)
+        elif not node.decl.mutable:
+            self.fail(node, f"cannot assign to '{node.name}': it is not mut")
+
+    def visit_var(self, node):
+        result = super().visit_var(node)
+        node.implicit_field = self.owner is not None and any(node.decl is f for f in self.owner.fields)
+        if node.implicit_field:
+            node.index = self.owner.fields.index(node.decl)
+        return result
+
+    def visit_print(self, node):
+        if not isinstance(node.value, StringNode):
+            self.visit(node.value)
 
     def check_init(self, node, typ):
         self.require_type(typ, node)
@@ -1465,6 +1620,7 @@ class SemanticChecker(CoreSemanticChecker):
             self.check_assignable(value, field.type_name, value, f"initialise field '{field.name}'")
 
     def visit_decl(self, node):
+        self.reserved(node)
         self.require_type(node.type_name, node)
         if isinstance(node.init, InitNode):
             self.check_init(node.init, node.type_name)
@@ -1477,7 +1633,7 @@ class SemanticChecker(CoreSemanticChecker):
         typ = self.visit(node.base)
         struct = self.structs.get(typ)
         if struct is None:
-            self.fail(node, f"type '{typ}' has no fields")
+            self.fail(getattr(node, 'dot', node), f"type '{typ}' has no fields")
         for index, field in enumerate(struct.fields):
             if field.name == node.name:
                 node.index, node.field, node.type = index, field, field.type_name
@@ -1488,6 +1644,22 @@ class SemanticChecker(CoreSemanticChecker):
         return typ in LLVM_TYPES or all(f.mutable and self.all_mut(f.type_name) for f in self.structs[typ].fields)
 
     def visit_assign(self, node):
+        root = node.target
+        while isinstance(root, FieldNode):
+            root = root.base
+        if isinstance(root, CallNode):
+            self.fail(root, 'cannot assign to a call result')
+        if self.owner:
+            self.visit(node.target)
+            if self.rooted_in_self(node.target):
+                self.check_mutable(node.target)
+                if not self.all_mut(node.target.type):
+                    self.fail(node, 'whole-object assignment requires every field at every depth to be mut')
+                self.current.mutating = True
+                self.visit(node.value)
+                self.check_assignable(node.value, node.target.type, node, 'assign to field')
+                node.implicit_assignment = True
+                return
         if isinstance(node.target, VarNode):
             super().visit_assign(node)
             if not self.all_mut(node.decl.type_name):
@@ -1507,9 +1679,39 @@ class SemanticChecker(CoreSemanticChecker):
         self.check_assignable(node.value, typ, node, 'assign to field')
 
     def visit_call(self, node):
+        if node.name == 'print':
+            self.fail(node, 'print has no value')
+        if node.name == 'read':
+            if node.args:
+                self.fail(node, 'read needs 0 arguments')
+            node.type = 'i32'
+            return node.type
+        if self.owner and node.name in self.owner.method_table:
+            node.function = self.owner.method_table[node.name]
+            node.implicit_member = True
+            self.current.dependencies.add(node.function)
+            return self.check_arguments(node, node.function)
         function = self.functions.get(node.name)
         if function is None:
             self.fail(node, f"unknown function '{node.name}'")
+        return self.check_arguments(node, function)
+
+    def visit_membercall(self, node):
+        if node.name in ('read', 'print'):
+            self.fail(node, f"name '{node.name}' is reserved")
+        typ = self.visit(node.base)
+        struct = self.structs.get(typ)
+        if struct is None:
+            self.fail(getattr(node, 'dot', node), f"type '{typ}' has no member functions")
+        function = struct.method_table.get(node.name)
+        if function is None:
+            self.fail(node, f"struct '{typ}' has no member function '{node.name}'")
+        self.pending_calls.append(node)
+        if self.owner and self.rooted_in_self(node.base):
+            self.current.dependencies.add(function)
+        return self.check_arguments(node, function)
+
+    def check_arguments(self, node, function):
         if len(node.args) != len(function.params):
             self.fail(node, f"function '{node.name}' needs {len(function.params)} arguments, got {len(node.args)}")
         for arg, param in zip(node.args, function.params):
@@ -1535,6 +1737,7 @@ class CodeGen(CoreCodeGen):
 
     def visit_program(self, node):
         main_builder = self.builder
+        self.structs = {s.name: s for s in node.statements if isinstance(s, StructNode)}
         for item in node.statements:
             if isinstance(item, StructNode):
                 typ = self.module.context.get_identified_type(item.name)
@@ -1542,11 +1745,28 @@ class CodeGen(CoreCodeGen):
                 self.types[item.name] = typ
             elif isinstance(item, FunctionNode):
                 item.llvm = ir.Function(self.module, ir.FunctionType(self.types[item.result], [self.types[p.type_name] for p in item.params]), name='user.' + item.name)
-        for item in node.statements:
+        methods = [m for s in self.structs.values() for m in s.methods]
+        for method in methods:
+            # Preserve the teacher's Point_shift spelling while disambiguating
+            # A_b.c versus A.b_c. Global user functions use a separate namespace.
+            name = method.owner.name + '_' + method.name
+            if name in self.module.globals:
+                name = self.module.get_unique_name(name)
+            signature = ir.FunctionType(
+                self.types[method.result],
+                [self.types[method.owner.name].as_pointer()]
+                + [self.types[p.type_name] for p in method.params],
+            )
+            method.llvm = ir.Function(self.module, signature, name=name)
+        for item in list(node.statements) + methods:
             if isinstance(item, FunctionNode):
                 self.builder = ir.IRBuilder(item.llvm.append_basic_block('entry'))
                 self.in_function = True
-                for param, argument in zip(item.params, item.llvm.args):
+                arguments = list(item.llvm.args)
+                if isinstance(item, MemberFnNode):
+                    self.this = arguments.pop(0)
+                    self.this.name = 'this'
+                for param, argument in zip(item.params, arguments):
                     argument.name = param.name
                     param.ptr = self.alloca_in_entry(self.types[param.type_name], param.name + '.slot')
                     self.builder.store(argument, param.ptr)
@@ -1578,21 +1798,89 @@ class CodeGen(CoreCodeGen):
 
     def field_ptr(self, node):
         if isinstance(node, VarNode):
+            if getattr(node, 'implicit_field', False):
+                return self.builder.gep(self.this, [ir.Constant(I32, 0), ir.Constant(I32, node.index)], inbounds=True)
             return node.decl.ptr
+        if isinstance(node, CallNode):
+            value = self.visit(node)
+            slot = self.alloca_in_entry(value.type, 'temporary')
+            self.builder.store(value, slot)
+            return slot
         return self.builder.gep(self.field_ptr(node.base), [ir.Constant(I32, 0), ir.Constant(I32, node.index)], inbounds=True)
 
     def visit_field(self, node):
+        root = node
+        while isinstance(root, FieldNode):
+            root = root.base
+        if isinstance(root, VarNode):
+            return self.builder.load(self.field_ptr(node))
+        return self.builder.extract_value(self.visit(node.base), node.index)
+
+    def visit_var(self, node):
         return self.builder.load(self.field_ptr(node))
 
     def visit_assign(self, node):
-        if isinstance(node.target, VarNode):
+        if isinstance(node.target, VarNode) and not getattr(node, 'implicit_assignment', False):
             return super().visit_assign(node)
         value = self.coerce(self.visit(node.value), node.value.type, node.target.type)
         self.builder.store(value, self.field_ptr(node.target))
 
     def visit_call(self, node):
+        if node.name == 'read':
+            if 'scanf' not in self.module.globals:
+                ir.Function(self.module, ir.FunctionType(I32, [I8.as_pointer()], var_arg=True), name='scanf')
+            slot = self.alloca_in_entry(I32, 'read.slot')
+            self.builder.store(ir.Constant(I32, 0), slot)
+            self.builder.call(self.module.globals['scanf'], [self.text_ptr(b'%d'), slot])
+            return self.builder.load(slot)
         args = [self.coerce(self.visit(arg), arg.type, param.type_name) for arg, param in zip(node.args, node.function.params)]
+        if getattr(node, 'implicit_member', False):
+            args.insert(0, self.this)
         return self.builder.call(node.function.llvm, args)
+
+    def visit_membercall(self, node):
+        address = self.field_ptr(node.base)
+        args = [self.coerce(self.visit(arg), arg.type, param.type_name) for arg, param in zip(node.args, node.function.params)]
+        return self.builder.call(node.function.llvm, [address] + args)
+
+    def text_ptr(self, data):
+        cache = getattr(self, 'texts', None)
+        if cache is None:
+            self.texts = cache = {}
+        if data not in cache:
+            raw = bytearray(data + b'\0')
+            glob = ir.GlobalVariable(self.module, ir.ArrayType(I8, len(raw)), name='text.' + str(len(cache)))
+            glob.linkage, glob.global_constant = 'private', True
+            glob.initializer = ir.Constant(glob.type.pointee, raw)
+            cache[data] = glob
+        return self.builder.bitcast(cache[data], I8.as_pointer())
+
+    def output_text(self, data):
+        self.builder.call(self.printf, [self.text_ptr(b'%s'), self.text_ptr(data)])
+
+    def print_value(self, value, typ):
+        if typ in self.structs:
+            self.output_text((typ + '{').encode())
+            slot = self.alloca_in_entry(value.type, 'print.object')
+            self.builder.store(value, slot)
+            for index, field in enumerate(self.structs[typ].fields):
+                self.output_text(((', ' if index else '') + field.name + ': ').encode())
+                ptr = self.builder.gep(slot, [ir.Constant(I32, 0), ir.Constant(I32, index)], inbounds=True)
+                self.print_value(self.builder.load(ptr), field.type_name)
+            self.output_text(b'}')
+        else:
+            fmt = b'%d' if typ == 'i32' else b'%lld'
+            if typ == 'bool':
+                fmt = b'%s'
+                value = self.builder.select(value, self.text_ptr(b'true'), self.text_ptr(b'false'))
+            self.builder.call(self.printf, [self.text_ptr(fmt), value])
+
+    def visit_print(self, node):
+        if isinstance(node.value, StringNode):
+            self.output_text(node.value.value.encode('latin1'))
+        else:
+            self.print_value(self.visit(node.value), node.value.type)
+        self.output_text(b'\n')
 
     def visit_exit(self, node):
         if self.in_function:
