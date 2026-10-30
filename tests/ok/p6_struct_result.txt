@@ -1,0 +1,12 @@
+struct Point
+{
+ i32 mut x
+ i32 mut y
+}
+fn make := () -> Point
+{
+ Point p{3, 4}
+ exit p
+}
+Point p{make()}
+exit p.x

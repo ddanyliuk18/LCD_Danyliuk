@@ -2,6 +2,10 @@
 
 set -u
 shopt -s nullglob
+cd "$(dirname "$0")"
+for tool in python3 lli opt; do
+    command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
+done
 
 passed=0
 failed=0
@@ -103,8 +107,15 @@ done
 echo
 echo "=== REGRESSIONS ==="
 check_crlf
+if python3 tools/verify_ir.py && opt -passes=mem2reg -S phi-check.ll -o phi-promoted.ll && grep -q 'phi i32' phi-promoted.ll; then
+    echo "LLVM structure and mem2reg PASS"
+    passed=$((passed + 1))
+else
+    echo "LLVM structure and mem2reg FAIL"
+    failed=$((failed + 1))
+fi
 
-rm -f output.ll actual.out actual.err actual.ast crlf_input.txt
+rm -f output.ll actual.out actual.err actual.ast crlf_input.txt phi-check.ll phi-promoted.ll
 
 echo
 echo "=== RESULT ==="

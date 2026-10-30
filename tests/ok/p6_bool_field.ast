@@ -1,0 +1,13 @@
+Program
+  Struct Flag
+    Field set bool mut
+  Decl f Flag mut
+    Init Flag
+      Bool false
+  Assign f.set
+    Not
+      FieldAccess set
+        Var f
+  Exit
+    FieldAccess set
+      Var f

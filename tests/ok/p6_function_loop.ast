@@ -1,0 +1,26 @@
+Program
+  Function sum -> i32
+    Field n i32 const
+    Block
+      Decl i i32 mut
+        Const 0
+      Decl s i32 mut
+        Const 0
+      While
+        BinOp !=
+          Var i
+          Var n
+        Block
+          Assign i
+            BinOp +
+              Var i
+              Const 1
+          Assign s
+            BinOp +
+              Var s
+              Var i
+      Exit
+        Var s
+  Exit
+    Call sum
+      Const 10

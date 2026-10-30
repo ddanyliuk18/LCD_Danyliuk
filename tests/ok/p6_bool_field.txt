@@ -1,0 +1,7 @@
+struct Flag
+{
+ bool mut set
+}
+Flag mut f{false}
+f.set := !f.set
+exit f.set

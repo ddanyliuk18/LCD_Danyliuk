@@ -1,0 +1,11 @@
+Program
+  Function wide -> i64
+    Field x i64 const
+    Block
+      Exit
+        Var x
+  Decl x i32 const
+    Const 7
+  Exit
+    Call wide
+      Var x

@@ -1,0 +1,5 @@
+fn f := (bool x) -> bool
+{
+ exit x
+}
+exit f(1)

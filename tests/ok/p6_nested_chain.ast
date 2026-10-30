@@ -1,0 +1,19 @@
+Program
+  Struct Point
+    Field x i32 mut
+    Field y i32 mut
+  Struct Circle
+    Field center Point const
+    Field radius i32 mut
+  Decl p Point const
+    Init Point
+      Const 10
+      Const 20
+  Decl c Circle const
+    Init Circle
+      Var p
+      Const 5
+  Exit
+    FieldAccess x
+      FieldAccess center
+        Var c
