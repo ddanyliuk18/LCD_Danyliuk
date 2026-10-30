@@ -1,0 +1,54 @@
+AI Usage — Practice 7
+
+Tool: OpenAI Codex, shell/PowerShell, file editing, Python 3.12, llvmlite 0.50,
+LLVM 18 lli/opt, coverage, Git and GitHub CLI. No additional AI agents used.
+
+Prompt: The user asked in Ukrainian to review Practice 6 and implement a logical,
+complete Practice 7 continuation with thorough tests, meaningful ordered commits
+and bonus work. The supplied assignment specified member declarations/calls,
+local/field/member/global lookup, fixed-point mutation analysis, by-address
+receivers, read/print, exact stdout with .in files, temporary call-result chains,
+ai_usage.txt, branch practice-7, PR into main and reviewer vovaskochko.
+No numeric commit minimum or prescribed commit-by-commit sequence was supplied.
+
+AI work accepted into the project:
+- reviewed Practice 6 parser, semantic checker, llvmlite generator and tests;
+- implemented explicit MemberFn and MemberCall nodes and AST dumps;
+- added struct method ordering and uniqueness checks, signature collection,
+  field fallback, member-first call resolution and top-level variable isolation;
+- implemented receiver pointers, implicit field GEP access and object mutation;
+- recorded direct mutations and dependencies and propagated them to a fixed
+  point, including cyclic calls, then checked mutable receiver paths;
+- implemented reserved read/print names, byte string scanning, scanf input,
+  primitive/bool/string/recursive struct output and one shared printf declaration;
+- implemented chained struct call results using extractvalue and entry slots,
+  permitted mutations of temporary copies and rejected assignment to them;
+- added 16 valid and 32 invalid fixtures, input files, AST/error snapshots,
+  hand-calculated stdout expectations, runner stdin support, LLVM assertions,
+  a teacher demo, grammar and documentation;
+- prepared focused commits and the submission PR.
+
+Taken as-is versus changed:
+AI assistance supplied most Practice 7 code and fixtures. Practice 6 implementation
+and old fixtures were retained. Runtime expectations were specified from the
+assignment and manual calculations before execution. AST/error snapshots were
+recorded by an explicit authoring helper, then checked against rules and source
+locations; tests never regenerate expectations.
+Review changed initial class reassignment to explicit MemberFn construction,
+disambiguated A_b.c versus A.b_c LLVM names, restored the old standalone-global-
+call diagnostic, and retained GEP reads of ordinary object fields while using
+extractvalue for fields of call results.
+An initial pair of overlapping shell test runs shared temporary files and caused
+spurious stdout/AST mismatches. The final full runner was run alone. The real
+standalone-call diagnostic regression and missing old GEP assertion were fixed
+before final verification. WSL and Git/GitHub operations required sandbox
+escalation; no credentials were written into repository files.
+
+All IR construction remains in llvmlite.ir. Binding parse_assembly is validation
+only, never an IR construction path. Final test/coverage/demo evidence is in
+docs/verification.md. The student must personally demonstrate the result to the
+teacher; AI cannot perform that presentation.
+
+The first demo attempt exposed a trailing CR in the last shell-script line
+created on Windows. The script was normalized to LF; the complete demo then
+finished with results 83, 2 (after the required print output), and 46.

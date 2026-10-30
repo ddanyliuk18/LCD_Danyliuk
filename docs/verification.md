@@ -127,3 +127,90 @@ Submission dependency: Practice 6 PR #5 was still open when Practice 7 PR #6
 was created against the required main branch. The PR description identifies
 this dependency. Merging #5 first will narrow #6 to the Practice 7 changes.
 A final documentation commit records this verified submission relationship.
+
+## Practice 8 verification (2026-10-30)
+
+Environment: Ubuntu WSL, Python 3.12, llvmlite 0.50, LLVM 18 lli/opt,
+coverage.py 7.16.2. Existing dependencies were used with
+`export PYTHONPATH=/var/tmp/lcd-practice6-deps`.
+
+Final complete run, after all compiler and fixture changes:
+
+```text
+bash run_tests.sh
+Passed: 188
+Failed: 0
+```
+
+The 142 earlier checks remain; Practice 8 adds 15 valid and 31 invalid programs.
+Every valid program is compiled and executed through lli with its neighboring
+`.in` file or /dev/null, comparing complete stdout and parse AST snapshots.
+All 15 Practice 8 cases also compare `--ast-checked` snapshots. Invalid cases
+compare exact diagnostics with line:column and assert no IR file survives.
+Earlier source, stdout, AST and error fixtures were not changed.
+
+`tools/verify_ir.py` repeats valid and invalid compilation with LF/CRLF and
+verifies every LLVM module, entry-block allocas, repeated compilation and CLI
+behavior. `tools/verify_practice8.py` independently checks real MemberCallNode
+lowering, byte-for-byte LLVM equivalence of short and explicit calls, lambda
+type/function/receiver signatures, capture GEP/store order, nested closure
+copies, mutable closure declarations and generated method mutation, checked
+AST snapshots and the new CLI flag on valid/invalid input. opt mem2reg still
+produces the required phi. IR construction remains entirely llvmlite.ir;
+parse_assembly is verification only.
+
+Coverage was measured after the complete runtime suite, sequentially to avoid
+shared temporary-file interference:
+
+```sh
+python3 -m coverage run --branch --source=src tools/verify_ir.py
+python3 -m coverage run --append --branch --source=src tools/verify_practice8.py
+python3 -m coverage report -m
+```
+
+```text
+Name              Stmts   Miss Branch BrPart  Cover
+src/compiler.py    1511     52    620     42    95%
+TOTAL              1511     52    620     42    95%
+```
+
+95% is combined line/branch coverage; 1459 of 1511 statements are covered.
+Separate lli executions validate observable runtime behavior and are not part
+of that in-process coverage measurement. No numeric coverage threshold or
+commit minimum appears in the supplied assignment.
+
+`bash tools/demo_practice8.sh` completed successfully and compared full output:
+
+| Example | Print lines | Exit result |
+|---|---|---|
+| Task 1 | 42, 42, 14, 10, Counter{n: 2} | 12 |
+| Task 2 | 15, 100, 50 | 11 |
+| Additional mut captures | 1, 2, 34, 3 | 0 |
+
+The demo also showed the Task 2 checked AST, `%"lambda.add_k" = type {i32}`
+and `lambda.add_k_call` with its object pointer and parameter, GEP/load/add.
+It rejected missing capture at 4:8, lambda passed to sq at 12:9 and mutating
+call through a const captured closure at 11:8. Locations correspond to the
+repository fixtures, whose indentation differs from the assignment PDF.
+
+Coverage includes callable fields and implicit self fields, short/explicit
+calls, signature failures, variable/function ambiguity, const receiver paths,
+empty captures with global calls, declaration-time copies, parameter and field
+captures, nested/loop/if lambdas, capturing another closure, unnamed-type
+restrictions, hidden captures, duplicate/unknown/conflicting captures, missing
+captures, no self-recursion, invalid nested functions/member capture lists,
+generated-call isolation, repeated source names in separate scopes, i64/bool,
+read input, independent mutable copies, mixed const/mut captures and const
+struct fields inside mut captures.
+
+Five meaningful Practice 8 commits separate compiler implementation, runtime
+fixtures, independent structural verification/demo, grammar/README and the
+final measured evidence/AI disclosure. The literal user prompt and explicit
+as-is/change record are in `ai_usage.txt`. The original Practice 7 disclosure
+is archived without inventing an unavailable original Practice 7 prompt.
+
+Submission targets `practice-8` -> `main` with reviewer `vovaskochko`.
+Practice 6 PR #5 and Practice 7 PR #6 were still open during this submission;
+the new PR explicitly identifies that ancestry. Do not merge older work as
+part of this task. The teacher presentation remains the student's action,
+due 30 October 2026 at 23:59 Europe/Kyiv.
