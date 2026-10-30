@@ -1,0 +1,19 @@
+Program
+  Function square -> i32
+    Field n i32 const
+    Block
+      Decl result i32 const
+        BinOp *
+          Var n
+          Var n
+      Exit
+        Var result
+  Decl first i32 const
+    Call square
+      Call read
+  Decl second i32 const
+    Call read
+  Print
+    Var second
+  Exit
+    Const 0

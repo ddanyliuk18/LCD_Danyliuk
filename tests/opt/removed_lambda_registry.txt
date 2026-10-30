@@ -1,0 +1,13 @@
+fn helper := () -> i32
+{
+ exit 3
+}
+fn abandoned := () -> i32
+{
+ fn closure := []() -> i32
+ {
+  exit helper()
+ }
+ exit closure()
+}
+exit 0

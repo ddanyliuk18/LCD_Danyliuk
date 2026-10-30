@@ -1,0 +1,12 @@
+struct Printer
+{
+ i32 n
+ fn call := () -> i32
+ {
+  print(n)
+  exit n
+ }
+}
+Printer p{12}
+i32 unused{p()}
+exit 0

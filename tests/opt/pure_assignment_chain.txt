@@ -1,0 +1,8 @@
+fn pure := (i32 n) -> i32
+{
+ exit n
+}
+i32 x{1}
+i32 mut y{0}
+y := pure(x)
+exit 0

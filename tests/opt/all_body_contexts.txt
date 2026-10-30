@@ -1,0 +1,23 @@
+struct Box
+{
+ i32 x
+ fn get := () -> i32
+ {
+  i32 member_dead{2}
+  exit x
+ }
+}
+fn helper := (i32 ignored) -> i32
+{
+ i32 local_dead{3}
+ exit 7
+}
+fn closure := []() -> i32
+{
+ i32 lambda_dead{4}
+ exit helper(5)
+}
+Box b{1}
+print(b.get())
+print(closure())
+exit 0

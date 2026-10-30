@@ -1,0 +1,15 @@
+Program
+  Decl k i32 const
+    Const 4
+  Lambda unused -> i32
+    Struct lambda.unused
+      Field k i32 const
+      MemberFn call -> i32
+        Block
+          Exit
+            Var k
+    Decl unused lambda.unused const
+      Init lambda.unused
+        Var k
+  Exit
+    Const 0

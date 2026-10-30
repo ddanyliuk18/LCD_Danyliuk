@@ -1,0 +1,8 @@
+fn loud := () -> i32
+{
+ print(6)
+ exit 2
+}
+i32 mut y{0}
+y := loud()
+exit 0

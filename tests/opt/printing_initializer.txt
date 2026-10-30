@@ -1,0 +1,7 @@
+fn loud := () -> i32
+{
+ print(9)
+ exit 1
+}
+i32 unread{loud()}
+exit 0

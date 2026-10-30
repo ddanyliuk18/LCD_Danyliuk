@@ -1,0 +1,6 @@
+i32 k{4}
+fn unused := [k]() -> i32
+{
+ exit k
+}
+exit 0

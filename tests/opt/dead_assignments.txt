@@ -1,0 +1,9 @@
+struct Point
+{
+ i32 mut x
+}
+Point mut p{1}
+p.x := 2
+i32 mut y{3}
+y := 4
+exit 0

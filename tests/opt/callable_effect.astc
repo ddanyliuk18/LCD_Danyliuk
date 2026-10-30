@@ -1,0 +1,17 @@
+Program
+  Struct Printer
+    Field n i32 const
+    MemberFn call -> i32
+      Block
+        Print
+          Var n
+        Exit
+          Var n
+  Decl p Printer const
+    Init Printer
+      Const 12
+  Decl unused i32 const
+    CallableCall p
+      Var p
+  Exit
+    Const 0

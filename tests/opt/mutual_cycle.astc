@@ -1,0 +1,11 @@
+Program
+  Function left -> i32
+    Block
+      Exit
+        Call right
+  Function right -> i32
+    Block
+      Exit
+        Call left
+  Exit
+    Const 0

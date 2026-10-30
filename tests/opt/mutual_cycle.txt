@@ -1,0 +1,9 @@
+fn left := () -> i32
+{
+ exit right()
+}
+fn right := () -> i32
+{
+ exit left()
+}
+exit 0

@@ -1,0 +1,10 @@
+fn maybe := () -> i32
+{
+ while false
+ {
+  i32 gone{1}
+ }
+ exit 2
+}
+i32 unused{maybe()}
+exit 0

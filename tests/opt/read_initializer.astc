@@ -1,0 +1,9 @@
+Program
+  Decl unread i32 const
+    Call read
+  Decl value i32 const
+    Call read
+  Print
+    Var value
+  Exit
+    Const 0

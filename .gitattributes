@@ -7,5 +7,6 @@
 *.ast text eol=lf
 *.expected text eol=lf
 *.checked text eol=lf
+*.astc text eol=lf
 *.in text eol=lf
 *.md text eol=lf
