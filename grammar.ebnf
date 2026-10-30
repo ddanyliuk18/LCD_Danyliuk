@@ -7,7 +7,10 @@ field_decl ::= type [ "mut" ] ident NL ;
 fn        ::= "fn" ident ":=" "(" [ param { "," param } ] ")" "->" type NL block ;
 param     ::= type ident ;
 blank     ::= "\n" ;
-statement ::= decl | assign | if | while | print ;
+statement ::= decl | assign | if | while | print | lambda ;
+lambda    ::= "fn" ident ":=" "[" [ capture { "," capture } ] "]"
+              "(" [ param { "," param } ] ")" "->" type NL block ;
+capture   ::= [ "mut" ] ident ;
 print     ::= "print" "(" ( string | expr ) ")" NL ;
 string    ::= '"' { byte-except-quote-or-newline } '"' ;
 decl      ::= type [ "mut" ] ident init NL ;
@@ -28,5 +31,13 @@ chain     ::= ident [ "(" [ expr { "," expr } ] ")" ]
               { "." ident [ "(" [ expr { "," expr } ] ")" ] } ;
 factor    ::= number | "true" | "false" | chain | "!" factor ;
 (* A suffix requires a struct result. Assignment targets cannot contain calls.
-   read() is a reserved i32 built-in; print is a statement with no value. *)
+   read() is a reserved i32 built-in; print is a statement with no value.
+   A visible variable in a call must be callable; a variable/function collision
+   is rejected at the call. A called field is a callable field, not a method.
+   Lambdas are statements, including at top level. A capture list is illegal on
+   a struct member; a nested fn without a capture list is illegal.
+   Function/lambda bodies must end with exit. Captures are declaration-time
+   value copies; mut captures make their own fields and the closure mutable.
+   Lambda body lookup is isolated to parameters, locals, captures and globals.
+   Generated lambda types are unnamed in the source language. *)
 NL        ::= "\n" | end-of-file ;
