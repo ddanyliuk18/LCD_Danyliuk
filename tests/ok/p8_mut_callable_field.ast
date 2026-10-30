@@ -1,0 +1,30 @@
+Program
+  Struct Counter
+    Field n i32 mut
+    MemberFn call -> i32
+      Block
+        Assign n
+          BinOp +
+            Var n
+            Const 1
+        Exit
+          Var n
+  Struct Holder
+    Field counter Counter mut
+    MemberFn call -> i32
+      Block
+        Exit
+          Call counter
+  Decl h Holder mut
+    Init Holder
+      Init Counter
+        Const 0
+  Print
+    MemberCall counter
+      Var h
+  Print
+    Call h
+  Exit
+    MemberCall call
+      FieldAccess counter
+        Var h

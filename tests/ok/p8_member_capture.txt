@@ -1,0 +1,14 @@
+struct Box
+{
+ i32 x
+ fn run := () -> i32
+ {
+  fn read_x := [x]() -> i32
+  {
+   exit x
+  }
+  exit read_x()
+ }
+}
+Box b{17}
+exit b.run()

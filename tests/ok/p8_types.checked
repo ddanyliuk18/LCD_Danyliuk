@@ -1,0 +1,33 @@
+Program
+  Decl wide i64 const
+    Const 2147483648
+  Decl flag bool const
+    Bool true
+  Lambda get -> i64
+    Struct lambda.get
+      Field wide i64 const
+      Field flag bool const
+      MemberFn call -> i64
+        Field n i32 const
+        Block
+          If
+            Var flag
+            Block
+              Decl value i64 const
+                BinOp +
+                  Var wide
+                  Var n
+              Exit
+                Var value
+          Exit
+            Var wide
+    Decl get lambda.get const
+      Init lambda.get
+        Var wide
+        Var flag
+  Print
+    CallableCall get
+      Var get
+      Const 2
+  Exit
+    Const 0

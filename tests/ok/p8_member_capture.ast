@@ -1,0 +1,18 @@
+Program
+  Struct Box
+    Field x i32 const
+    MemberFn run -> i32
+      Block
+        Lambda read_x -> i32
+          Capture x const
+          Block
+            Exit
+              Var x
+        Exit
+          Call read_x
+  Decl b Box const
+    Init Box
+      Const 17
+  Exit
+    MemberCall run
+      Var b

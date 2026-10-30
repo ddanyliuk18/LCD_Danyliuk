@@ -1,0 +1,37 @@
+Program
+  Decl n i32 const
+    Const 2
+  If
+    Bool true
+    Block
+      Lambda value -> i32
+        Struct lambda.value
+          Field n i32 const
+          MemberFn call -> i32
+            Block
+              Exit
+                Var n
+        Decl value lambda.value const
+          Init lambda.value
+            Var n
+      Print
+        CallableCall value
+          Var value
+  If
+    Bool true
+    Block
+      Lambda value -> i32
+        Struct lambda.value.1
+          MemberFn call -> i32
+            Field x i32 const
+            Block
+              Exit
+                Var x
+        Decl value lambda.value.1 const
+          Init lambda.value.1
+      Print
+        CallableCall value
+          Var value
+          Const 8
+  Exit
+    Const 0

@@ -1,0 +1,18 @@
+i32 n{2}
+if true
+{
+ fn value := [n]() -> i32
+ {
+  exit n
+ }
+ print(value())
+}
+if true
+{
+ fn value := [](i32 x) -> i32
+ {
+  exit x
+ }
+ print(value(8))
+}
+exit 0

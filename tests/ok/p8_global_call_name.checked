@@ -1,0 +1,16 @@
+Program
+  Function call -> i32
+    Block
+      Exit
+        Const 23
+  Lambda get -> i32
+    Struct lambda.get
+      MemberFn call -> i32
+        Block
+          Exit
+            Call call
+    Decl get lambda.get const
+      Init lambda.get
+  Exit
+    CallableCall get
+      Var get

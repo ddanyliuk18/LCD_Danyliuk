@@ -1,0 +1,49 @@
+Program
+  Decl n i32 const
+    Const 5
+  Decl step i32 const
+    Const 2
+  Lambda first -> i32
+    Struct lambda.first
+      Field n i32 mut
+      Field step i32 const
+      MemberFn call -> i32
+        Block
+          Assign n
+            BinOp +
+              Var n
+              Var step
+          Exit
+            Var n
+    Decl first lambda.first mut
+      Init lambda.first
+        Var n
+        Var step
+  Lambda second -> i32
+    Struct lambda.second
+      Field n i32 mut
+      MemberFn call -> i32
+        Block
+          Assign n
+            BinOp +
+              Var n
+              Const 1
+          Exit
+            Var n
+    Decl second lambda.second mut
+      Init lambda.second
+        Var n
+  Print
+    CallableCall first
+      Var first
+  Print
+    CallableCall first
+      Var first
+  Print
+    CallableCall second
+      Var second
+  Print
+    Var n
+  Exit
+    CallableCall second
+      Var second
